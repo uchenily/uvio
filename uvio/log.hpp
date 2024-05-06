@@ -6,32 +6,33 @@ class ConsoleLogger {
 public:
     template <typename... Args>
     void trace(std::string_view fmt, Args... args) {
-        auto msg = std::vformat(fmt, std::make_format_args(args...));
-        std::cout << "[TRACE] " << msg << '\n';
+        std::cout << "[TRACE] " << log(fmt, args...) << '\n';
     }
 
     template <typename... Args>
     void debug(std::string_view fmt, Args... args) {
-        auto msg = std::vformat(fmt, std::make_format_args(args...));
-        std::cout << "[DEBUG] " << msg << '\n';
+        std::cout << "[DEBUG] " << log(fmt, args...) << '\n';
     }
 
     template <typename... Args>
     void info(std::string_view fmt, Args... args) {
-        auto msg = std::vformat(fmt, std::make_format_args(args...));
-        std::cout << "[INFO ] " << msg << '\n';
+        std::cout << "[INFO ] " << log(fmt, args...) << '\n';
     }
 
     template <typename... Args>
     void warn(std::string_view fmt, Args... args) {
-        auto msg = std::vformat(fmt, std::make_format_args(args...));
-        std::cout << "[WARN ] " << msg << '\n';
+        std::cout << "[WARN ] " << log(fmt, args...) << '\n';
     }
 
     template <typename... Args>
     void error(std::string_view fmt, Args... args) {
-        auto msg = std::vformat(fmt, std::make_format_args(args...));
-        std::cout << "[ERROR] " << msg << '\n';
+        std::cout << "[ERROR] " << log(fmt, args...) << '\n';
+    }
+
+private:
+    template <typename... Args>
+    auto log(std::string_view fmt, Args... args) {
+        return std::vformat(fmt, std::make_format_args(args...));
     }
 };
 
