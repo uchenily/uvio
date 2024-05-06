@@ -1,5 +1,10 @@
 # uvio
 
+![GitHub License](https://img.shields.io/github/license/uchenily/uvio)
+![Static Badge](https://img.shields.io/badge/c%2B%2B20-Coroutines-orange)
+![Static Badge](https://img.shields.io/badge/standard-c%2B%2B20-blue?logo=cplusplus)
+![GitHub top language](https://img.shields.io/github/languages/top/uchenily/uvio)
+
 C++20 coroutines + libuv
 
 ## 示例
