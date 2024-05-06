@@ -1,3 +1,5 @@
+#pragma once
+
 #include <chrono>
 #include <format>
 #include <iostream>
@@ -65,7 +67,7 @@ namespace detail {
     }
 
     template <int N, char c>
-    inline void to_int(uint64_t num, char *p, int &size) {
+    inline auto to_int(uint64_t num, char *p, int &size) {
         constexpr static std::array<char, 10> digits
             = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
@@ -139,32 +141,32 @@ namespace detail {
     class ConsoleLogger {
     public:
         template <typename... Args>
-        void trace(FmtWithSourceLocation fwsl, Args &&...args) {
+        auto trace(FmtWithSourceLocation fwsl, Args &&...args) {
             log<LogLevel::TRACE>(fwsl, std::forward<Args>(args)...);
         }
 
         template <typename... Args>
-        void debug(FmtWithSourceLocation fwsl, Args &&...args) {
+        auto debug(FmtWithSourceLocation fwsl, Args &&...args) {
             log<LogLevel::DEBUG>(fwsl, std::forward<Args>(args)...);
         }
 
         template <typename... Args>
-        void info(FmtWithSourceLocation fwsl, Args &&...args) {
+        auto info(FmtWithSourceLocation fwsl, Args &&...args) {
             log<LogLevel::INFO>(fwsl, std::forward<Args>(args)...);
         }
 
         template <typename... Args>
-        void warn(FmtWithSourceLocation fwsl, Args &&...args) {
+        auto warn(FmtWithSourceLocation fwsl, Args &&...args) {
             log<LogLevel::WARN>(fwsl, std::forward<Args>(args)...);
         }
 
         template <typename... Args>
-        void error(FmtWithSourceLocation fwsl, Args &&...args) {
+        auto error(FmtWithSourceLocation fwsl, Args &&...args) {
             log<LogLevel::ERROR>(fwsl, std::forward<Args>(args)...);
         }
 
         template <typename... Args>
-        void fatal(FmtWithSourceLocation fwsl, Args &&...args) {
+        auto fatal(FmtWithSourceLocation fwsl, Args &&...args) {
             log<LogLevel::FATAL>(fwsl, std::forward<Args>(args)...);
         }
 

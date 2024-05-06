@@ -12,7 +12,7 @@ TEST(TestSuiteName, TestName) {
 
 class TestFixtureName : public testing::Test {
 protected:
-    void SetUp() override {
+    auto SetUp() -> void override {
         vec.push_back(1);
         vec.push_back(2);
         vec.push_back(3);
