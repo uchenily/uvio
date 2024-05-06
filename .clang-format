@@ -16,7 +16,7 @@ AllowShortLambdasOnASingleLine: Empty
 BinPackArguments: false
 BinPackParameters: false
 BreakAfterAttributes: Always
-BreakBeforeBinaryOperators: All
+BreakBeforeBinaryOperators: true
 BreakConstructorInitializers: BeforeComma
 # BreakTemplateDeclarations: Yes # renamed
 AlwaysBreakTemplateDeclarations: Yes
