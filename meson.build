@@ -10,6 +10,8 @@ compile_args = []
 
 includes = include_directories('.')
 
+libuv_dep = dependency('libuv')
 dependencies = []
+dependencies += libuv_dep
 
 subdir('tests')
