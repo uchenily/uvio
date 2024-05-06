@@ -3,6 +3,7 @@
 using namespace uvio::log;
 
 auto main() -> int {
+    console.set_level(LogLevel::TRACE);
     console.trace("hello world");
     console.debug("hello world");
     console.info("hello world");

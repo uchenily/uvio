@@ -6,16 +6,16 @@
 
 namespace uvio::log {
 
-namespace detail {
-    enum class LogLevel {
-        TRACE,
-        DEBUG,
-        INFO,
-        WARN,
-        ERROR,
-        FATAL,
-    };
+enum class LogLevel {
+    TRACE,
+    DEBUG,
+    INFO,
+    WARN,
+    ERROR,
+    FATAL,
+};
 
+namespace detail {
     constexpr auto to_string(LogLevel level) noexcept -> std::string_view {
         using enum LogLevel;
         switch (level) {
@@ -139,38 +139,45 @@ namespace detail {
     class ConsoleLogger {
     public:
         template <typename... Args>
-        void trace(FmtWithSourceLocation fwsl, Args... args) {
-            log<LogLevel::TRACE>(fwsl, args...);
+        void trace(FmtWithSourceLocation fwsl, Args &&...args) {
+            log<LogLevel::TRACE>(fwsl, std::forward<Args>(args)...);
         }
 
         template <typename... Args>
-        void debug(FmtWithSourceLocation fwsl, Args... args) {
-            log<LogLevel::DEBUG>(fwsl, args...);
+        void debug(FmtWithSourceLocation fwsl, Args &&...args) {
+            log<LogLevel::DEBUG>(fwsl, std::forward<Args>(args)...);
         }
 
         template <typename... Args>
-        void info(FmtWithSourceLocation fwsl, Args... args) {
-            log<LogLevel::INFO>(fwsl, args...);
+        void info(FmtWithSourceLocation fwsl, Args &&...args) {
+            log<LogLevel::INFO>(fwsl, std::forward<Args>(args)...);
         }
 
         template <typename... Args>
-        void warn(FmtWithSourceLocation fwsl, Args... args) {
-            log<LogLevel::WARN>(fwsl, args...);
+        void warn(FmtWithSourceLocation fwsl, Args &&...args) {
+            log<LogLevel::WARN>(fwsl, std::forward<Args>(args)...);
         }
 
         template <typename... Args>
-        void error(FmtWithSourceLocation fwsl, Args... args) {
-            log<LogLevel::ERROR>(fwsl, args...);
+        void error(FmtWithSourceLocation fwsl, Args &&...args) {
+            log<LogLevel::ERROR>(fwsl, std::forward<Args>(args)...);
         }
 
         template <typename... Args>
-        void fatal(FmtWithSourceLocation fwsl, Args... args) {
-            log<LogLevel::FATAL>(fwsl, args...);
+        void fatal(FmtWithSourceLocation fwsl, Args &&...args) {
+            log<LogLevel::FATAL>(fwsl, std::forward<Args>(args)...);
+        }
+
+        auto set_level(LogLevel level) {
+            level_ = level;
         }
 
     private:
         template <LogLevel Level, typename... Args>
-        auto log(FmtWithSourceLocation fwsl, Args... args) {
+        auto log(FmtWithSourceLocation fwsl, Args &...args) {
+            if (Level < level_) {
+                return;
+            }
             auto fmt = fwsl.fmt();
             auto source_location = fwsl.source_location();
             auto message = std::vformat(fmt, std::make_format_args(args...));
@@ -186,7 +193,11 @@ namespace detail {
                                      reset_color(),
                                      message);
         }
+
+    private:
+        LogLevel level_{LogLevel::DEBUG};
     };
+
 } // namespace detail
 
 static inline auto console = detail::ConsoleLogger();
