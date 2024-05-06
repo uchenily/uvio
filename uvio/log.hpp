@@ -10,23 +10,55 @@ enum class LogLevel {
     INFO,
     WARN,
     ERROR,
+    FATAL,
 };
 
-constexpr auto to_string(LogLevel level) -> std::string_view {
+constexpr auto to_string(LogLevel level) noexcept -> std::string_view {
+    using enum LogLevel;
     switch (level) {
-    case LogLevel::TRACE:
+    case TRACE:
         return "TRACE";
-    case LogLevel::DEBUG:
+    case DEBUG:
         return "DEBUG";
-    case LogLevel::INFO:
+    case INFO:
         return "INFO ";
-    case LogLevel::WARN:
+    case WARN:
         return "WARN ";
-    case LogLevel::ERROR:
+    case ERROR:
         return "ERROR";
+    case FATAL:
+        return "FATAL";
     default:
         return "UNKNOWN";
     }
+}
+
+constexpr auto to_color(LogLevel level) noexcept -> std::string_view {
+    using enum LogLevel;
+    switch (level) {
+    case TRACE:
+        return "\033[36m";
+    case DEBUG:
+        return "\033[94m";
+    case INFO:
+        return "\033[32m";
+    case WARN:
+        return "\033[33m";
+    case ERROR:
+        return "\033[31m";
+    case FATAL:
+        return "\033[35m";
+    default:
+        return "";
+    }
+}
+
+constexpr auto source_color() noexcept -> std::string_view {
+    return "\033[90m";
+}
+
+constexpr auto reset_color() noexcept -> std::string_view {
+    return "\033[0m";
 }
 
 template <int N, char c>
@@ -127,6 +159,11 @@ public:
         log<LogLevel::ERROR>(fwsl, args...);
     }
 
+    template <typename... Args>
+    void fatal(FmtWithSourceLocation fwsl, Args... args) {
+        log<LogLevel::FATAL>(fwsl, args...);
+    }
+
 private:
     template <LogLevel Level, typename... Args>
     auto log(FmtWithSourceLocation fwsl, Args... args) {
@@ -134,11 +171,15 @@ private:
         auto source_location = fwsl.source_location();
         auto message = std::vformat(fmt, std::make_format_args(args...));
         auto now = std::chrono::system_clock::now();
-        std::clog << std::format("{} [{:<5}] {}:{} {}\n",
+        std::clog << std::format("{} |{}{:<5}{}| {}{}:{}{} {}\n",
                                  get_timestamp(now),
+                                 to_color(Level),
                                  to_string(Level),
+                                 reset_color(),
+                                 source_color(),
                                  source_location.file_name(),
                                  source_location.line(),
+                                 reset_color(),
                                  message);
     }
 };
