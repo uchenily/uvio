@@ -105,12 +105,12 @@ namespace detail {
     }
 
     template <int N, char c>
-    inline auto to_int(uint64_t num, char *p, int &size) {
+    inline auto to_int(uint64_t num, std::span<char> p, int &size) {
         constexpr static std::array<char, 10> digits
             = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
 
         for (int i = 0; i < N; i++) {
-            p[--size] = digits[num % 10];
+            p[--size] = digits.at(num % 10);
             num = num / 10;
         }
 
@@ -133,7 +133,7 @@ namespace detail {
                   .count();
         int size = 23;
         if (last_second == seconds) {
-            to_int<3, '.'>(milliseconds, buf.data(), size);
+            to_int<3, '.'>(milliseconds, buf, size);
             return buf.data();
         }
 
@@ -141,14 +141,14 @@ namespace detail {
         auto tt = std::chrono::system_clock::to_time_t(now);
         auto tm = localtime(&tt);
 
-        to_int<3, '.'>(milliseconds, buf.data(), size);
-        to_int<2, ':'>(tm->tm_sec, buf.data(), size);
-        to_int<2, ':'>(tm->tm_min, buf.data(), size);
-        to_int<2, ' '>(tm->tm_hour, buf.data(), size);
+        to_int<3, '.'>(milliseconds, buf, size);
+        to_int<2, ':'>(tm->tm_sec, buf, size);
+        to_int<2, ':'>(tm->tm_min, buf, size);
+        to_int<2, ' '>(tm->tm_hour, buf, size);
 
-        to_int<2, '-'>(tm->tm_mday, buf.data(), size);
-        to_int<2, '-'>(tm->tm_mon + 1, buf.data(), size);
-        to_int<4, ' '>(tm->tm_year + 1900, buf.data(), size);
+        to_int<2, '-'>(tm->tm_mday, buf, size);
+        to_int<2, '-'>(tm->tm_mon + 1, buf, size);
+        to_int<4, ' '>(tm->tm_year + 1900, buf, size);
         return buf.data();
     }
 
@@ -218,7 +218,7 @@ namespace detail {
 
     private:
         template <LogLevel Level, typename... Args>
-        auto log(FmtWithSourceLocation fwsl, Args &...args) {
+        auto log(FmtWithSourceLocation fwsl, const Args &...args) {
             if (Level < level_) {
                 return;
             }
