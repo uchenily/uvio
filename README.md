@@ -4,6 +4,7 @@
 ![Static Badge](https://img.shields.io/badge/c%2B%2B20-Coroutines-orange)
 ![Static Badge](https://img.shields.io/badge/standard-c%2B%2B20-blue?logo=cplusplus)
 ![GitHub top language](https://img.shields.io/github/languages/top/uchenily/uvio)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/uchenily/uvio/ci.yaml)
 
 C++20 coroutines + libuv
 
