@@ -18,4 +18,9 @@ executable('test_task', 'test_task.cpp',
   cpp_args: compile_args,
   dependencies: dependencies)
 
+executable('coco_timer', 'coro_timer.cpp',
+  include_directories: includes,
+  cpp_args: compile_args,
+  dependencies: dependencies)
+
 subdir('gtests')
