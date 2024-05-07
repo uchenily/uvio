@@ -46,9 +46,9 @@ auto IsPrime(int num) -> bool {
     return true;
 }
 
-INSTANTIATE_TEST_CASE_P(TestSuiteParameterizedName,
-                        TestSuiteParameterized,
-                        testing::Values(3, 5, 11, 23, 17));
+INSTANTIATE_TEST_SUITE_P(TestSuiteParameterizedName,
+                         TestSuiteParameterized,
+                         testing::Values(3, 5, 11, 23, 17));
 
 TEST_P(TestSuiteParameterized, TestName) {
     int n = GetParam();

@@ -5,6 +5,12 @@ project('uvio', 'cpp',
     'warning_level=3'],
   meson_version: '>=1.0.0')
 
+# Use libc++ by default if available instead of libstdc++ when compiling with clang.
+cxx = meson.get_compiler('cpp')
+if cxx.get_id() == 'clang' and cxx.find_library('libc++', required: false).found()
+  add_project_arguments(['-stdlib=libc++'], language: 'cpp')
+  add_project_link_arguments(['-lc++abi'], language: 'cpp')
+endif
 
 compile_args = []
 
