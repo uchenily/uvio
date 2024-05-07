@@ -10,4 +10,11 @@ auto main() -> int {
     console.warn("hello world");
     console.error("hello world");
     console.fatal("hello world");
+    console.set_style(Style::Background);
+    console.trace("hello world");
+    console.debug("hello world");
+    console.info("hello world");
+    console.warn("hello world");
+    console.error("hello world");
+    console.fatal("hello world");
 }

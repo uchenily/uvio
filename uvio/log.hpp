@@ -17,6 +17,11 @@ enum class LogLevel {
     FATAL,
 };
 
+enum class Style {
+    Foreground,
+    Background,
+};
+
 namespace detail {
     constexpr auto to_string(LogLevel level) noexcept -> std::string_view {
         using enum LogLevel;
@@ -38,7 +43,7 @@ namespace detail {
         }
     }
 
-    constexpr auto to_color(LogLevel level) noexcept -> std::string_view {
+    constexpr auto to_color_fg(LogLevel level) noexcept -> std::string_view {
         using enum LogLevel;
         switch (level) {
         case TRACE:
@@ -53,6 +58,39 @@ namespace detail {
             return "\033[31m";
         case FATAL:
             return "\033[35m";
+        default:
+            return "";
+        }
+    }
+
+    constexpr auto to_color_bg(LogLevel level) noexcept -> std::string_view {
+        switch (level) {
+            using enum LogLevel;
+        case TRACE:
+            return "\033[97;46m"; // cyan
+        case DEBUG:
+            return "\033[97;44m"; // blue
+        case INFO:
+            return "\033[97;42m"; // green
+        case WARN:
+            return "\033[90;43m"; // yellow
+        case ERROR:
+            return "\033[97;41m"; // red
+        case FATAL:
+            return "\033[97;45m"; // purple
+        default:
+            return "";
+        }
+    }
+
+    constexpr auto to_color(LogLevel level, Style style) noexcept
+        -> std::string_view {
+        using enum Style;
+        switch (style) {
+        case Foreground:
+            return to_color_fg(level);
+        case Background:
+            return to_color_bg(level);
         default:
             return "";
         }
@@ -174,6 +212,10 @@ namespace detail {
             level_ = level;
         }
 
+        auto set_style(Style style) {
+            style_ = style;
+        }
+
     private:
         template <LogLevel Level, typename... Args>
         auto log(FmtWithSourceLocation fwsl, Args &...args) {
@@ -186,7 +228,7 @@ namespace detail {
             auto now = std::chrono::system_clock::now();
             std::clog << std::format("{} |{}{:<5}{}| {}{}:{}{} {}\n",
                                      get_timestamp(now),
-                                     to_color(Level),
+                                     to_color(Level, style_),
                                      to_string(Level),
                                      reset_color(),
                                      source_color(),
@@ -198,6 +240,7 @@ namespace detail {
 
     private:
         LogLevel level_{LogLevel::DEBUG};
+        Style    style_{Style::Foreground};
     };
 
 } // namespace detail
