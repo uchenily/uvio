@@ -1,0 +1,49 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build_linux:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { compiler: gcc, version: 13, build_type: release, cxx: g++ }
+          - { compiler: clang, version: 17, build_type: release, cxx: clang++ }
+    container:
+      image: ${{ matrix.config.compiler == 'clang' && 'teeks99/clang-ubuntu' || matrix.config.compiler }}:${{ matrix.config.version }}
+    name: "${{ matrix.config.compiler }} ${{ matrix.config.version }} (C++${{ matrix.config.cppstd }}, ${{ matrix.config.build_type }})"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+
+      - name: Setup
+        run: |
+          apt-get update
+          apt-get install -y curl git pkg-config
+
+      - name: Setup Python
+        uses: actions/setup-python@main
+        with:
+          python-version: '3.12'
+
+      - name: Install Meson/Ninja
+        run: |
+          python3 -m pip install meson ninja
+
+      # - name: Install
+      #   run: |
+      #     CMAKE_VERSION="3.24.2"
+      #     curl -sSL https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.sh -o install-cmake.sh
+      #     chmod +x install-cmake.sh
+      #     ./install-cmake.sh --prefix=/usr/local --skip-license
+
+      - name: Build
+        run: |
+          CXX=${{ matrix.config.cxx }} meson setup build -Dbuildtype=${{ matrix.config.build_type }}
+          meson compile -C build
+          ./build/tests/gtests/all_gtests
