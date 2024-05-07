@@ -25,7 +25,7 @@ meson compile -C build
 
 ## 编译器版本
 
-clang (>= 10.0.0) 或 gcc (>= 10.3)
+clang (>= 17) 或 gcc (>= 13)
 
 ## 致谢
 
