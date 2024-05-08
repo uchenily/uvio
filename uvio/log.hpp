@@ -4,6 +4,7 @@
 #include <format>
 #include <iostream>
 #include <source_location>
+#include <span>
 #include <string_view>
 
 namespace uvio::log {
