@@ -38,6 +38,18 @@ meson setup build
 meson compile -C build
 ```
 
+## 安装
+
+```shell
+meson install -C build [--destdir xxx_path]
+```
+
+或者直接拷贝目录:
+
+```shell
+cp -r uvio xxx_path
+```
+
 ## 编译器版本
 
 clang (>= 17) 或 gcc (>= 13)
