@@ -78,17 +78,19 @@ public:
                     reinterpret_cast<const sockaddr *>(&bind_addr),
                     0);
 
-        uv_listen(reinterpret_cast<uv_stream_t *>(&listen_socket_),
-                  backlog_,
-                  [](uv_stream_t *req, int status) {
-                      auto data = static_cast<AcceptAwaiter *>(req->data);
-                      data->status_ = status;
-                      assert(status == 0);
-                      data->ready_ = true;
-                      if (data->handle_) {
-                          data->handle_.resume();
-                      }
-                  });
+        auto res = uv_listen(reinterpret_cast<uv_stream_t *>(&listen_socket_),
+                             backlog_,
+                             [](uv_stream_t *req, int status) {
+                                 auto data
+                                     = static_cast<AcceptAwaiter *>(req->data);
+                                 data->status_ = status;
+                                 assert(status == 0);
+                                 data->ready_ = true;
+                                 if (data->handle_) {
+                                     data->handle_.resume();
+                                 }
+                             });
+        assert(res == 0);
     }
 
     auto accept() noexcept {

@@ -18,6 +18,8 @@ namespace detail {
 
         SleepAwaiter(uint64_t timeout) {
             uv_timer_init(uv_default_loop(), &timer_);
+            // uv_handle_set_data(reinterpret_cast<uv_handle_t *>(&timer_),
+            // this);
             timer_.data = this;
             uv_timer_start(
                 &timer_,
