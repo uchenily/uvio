@@ -1,8 +1,6 @@
-#include "uvio/log.hpp"
-#include "uvio/task.hpp"
+#include "uvio/core.hpp"
 
 using namespace uvio;
-using namespace uvio::log;
 
 auto test() -> Task<> {
     console.info("run task ...");

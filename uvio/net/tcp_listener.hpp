@@ -12,7 +12,7 @@
 
 #include "uv.h"
 
-namespace uvio {
+namespace uvio::net {
 
 class TcpListener {
 
@@ -91,4 +91,4 @@ public:
     }
 };
 
-} // namespace uvio
+} // namespace uvio::net

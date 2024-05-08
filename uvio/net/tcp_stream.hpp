@@ -11,9 +11,7 @@
 
 #include "uv.h"
 
-namespace uvio {
-
-using namespace uvio::log;
+namespace uvio::net {
 
 class TcpStream {
 public:
@@ -164,4 +162,4 @@ public:
     }
 };
 
-} // namespace uvio
+} // namespace uvio::net

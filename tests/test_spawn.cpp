@@ -1,10 +1,7 @@
-#include "uvio/log.hpp"
-#include "uvio/runtime.hpp"
-#include "uvio/task.hpp"
-#include "uvio/time/sleep.hpp"
+#include "uvio/core.hpp"
+#include "uvio/time.hpp"
 
 using namespace uvio;
-using namespace uvio::log;
 using namespace uvio::time;
 
 auto task1() -> Task<> {
