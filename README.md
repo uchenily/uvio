@@ -6,6 +6,7 @@
 ![GitHub top language](https://img.shields.io/github/languages/top/uchenily/uvio)
 [![Actions Status](https://github.com/uchenily/uvio/actions/workflows/linux.yaml/badge.svg?branch=main)](https://github.com/uchenily/uvio/actions)
 [![Actions Status](https://github.com/uchenily/uvio/actions/workflows/macos.yaml/badge.svg?branch=main)](https://github.com/uchenily/uvio/actions)
+[![Actions Status](https://github.com/uchenily/uvio/actions/workflows/windows.yaml/badge.svg?branch=main)](https://github.com/uchenily/uvio/actions)
 
 
 C++20 coroutines + libuv
