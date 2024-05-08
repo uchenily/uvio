@@ -47,3 +47,7 @@ jobs:
           CXX=${{ matrix.config.cxx }} meson setup build -Dbuildtype=${{ matrix.config.build_type }}
           meson compile -C build
           ./build/tests/gtests/all_gtests
+
+      - name: Install
+        run: |
+          meson install -C build
