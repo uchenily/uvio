@@ -5,6 +5,7 @@ all_tests_sources = [
   'test_timer.cpp',
   'coro_timer.cpp',
   'test_spawn.cpp',
+  'test_server.cpp',
 ]
 
 foreach source: all_tests_sources
