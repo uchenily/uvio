@@ -11,7 +11,54 @@ C++20 coroutines + libuv
 
 ## 示例
 
-TODO
+tcp echo server
+
+```C++
+#include "uvio/core.hpp"
+#include "uvio/net.hpp"
+
+using namespace uvio;
+using namespace uvio::net;
+
+auto process(TcpStream stream) -> Task<> {
+    while (true) {
+        std::array<char, 1024> buf{};
+
+        auto nread = co_await stream.read(buf);
+        if (nread == UV_EOF) {
+            break;
+        }
+        console.info("Received: `{}`", buf.data());
+        co_await stream.write(buf.data());
+    }
+    co_return;
+}
+
+auto server() -> Task<> {
+    std::string host{"0.0.0.0"};
+    int         port{8000};
+
+    auto listener = TcpListener();
+    listener.bind(host, port);
+    console.info("Listening on {}:{} ...", host, port);
+    while (true) {
+        auto stream = co_await listener.accept();
+        spawn(process(std::move(stream)));
+    }
+}
+
+auto main() -> int {
+    block_on(server());
+}
+
+```
+
+```bash
+# 客户端
+telnet localhost 8000
+# 或者
+nc localhost 8000 -v
+```
 
 ## 功能
 
