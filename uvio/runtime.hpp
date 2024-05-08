@@ -26,4 +26,11 @@ static inline auto block_on(Task<> &&first_coro) {
     console.debug("loop end.");
 }
 
+static inline auto spawn(Task<> &&task) {
+    auto handle = task.take();
+    console.debug("spawn task ...");
+    handle.resume();
+    console.debug("spawn end.");
+}
+
 } // namespace uvio
