@@ -160,6 +160,62 @@ public:
 
         return WriteAwaiter{tcp_handle_.get(), message};
     }
+
+public:
+    static auto connect(std::string_view addr, int port) {
+        struct ConnectAwaiter {
+
+            std::coroutine_handle<>   handle_;
+            std::unique_ptr<uv_tcp_t> client_;
+            uv_connect_t              connect_req_{};
+            int                       status_{1};
+
+            ConnectAwaiter(std::string_view addr, int port)
+                : client_{std::make_unique<uv_tcp_t>()} {
+                uv_tcp_init(uv_default_loop(), client_.get());
+
+                struct sockaddr_in dest {};
+                uv_ip4_addr(addr.data(), port, &dest);
+
+                connect_req_.data = this;
+
+                auto res = uv_tcp_connect(
+                    &connect_req_,
+                    client_.get(),
+                    reinterpret_cast<const struct sockaddr *>(&dest),
+                    [](uv_connect_t *req, int status) {
+                        auto data = static_cast<ConnectAwaiter *>(req->data);
+                        data->status_ = status;
+                        if (status != 0) {
+                            console.error("Connect failed: {}",
+                                          uv_strerror(status));
+                            return;
+                        }
+
+                        if (data->handle_) {
+                            data->handle_.resume();
+                        }
+                    });
+                assert(res == 0);
+            }
+
+            auto await_ready() const noexcept -> bool {
+                return status_ <= 0;
+            }
+
+            auto await_suspend(std::coroutine_handle<> handle) noexcept {
+                handle_ = handle;
+            }
+
+            [[nodiscard]]
+            auto await_resume() noexcept -> TcpStream {
+                handle_ = nullptr;
+                return TcpStream{std::move(client_)};
+            }
+        };
+
+        return ConnectAwaiter{addr, port};
+    }
 };
 
 } // namespace uvio::net

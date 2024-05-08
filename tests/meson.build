@@ -8,6 +8,7 @@ all_tests_sources = [
   'test_server.cpp',
   'coro_server.cpp',
   'test_client.cpp',
+  'coro_client.cpp',
 ]
 
 foreach source: all_tests_sources
