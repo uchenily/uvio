@@ -102,7 +102,7 @@ cp -r uvio xxx_path
 
 ## 编译器版本
 
-clang (>= 17) 或 gcc (>= 13)
+clang (>= 17) 或 gcc (>= 13) 或 apple clang (>= 15) 或 MSVC (>= 19)
 
 ## 致谢
 
