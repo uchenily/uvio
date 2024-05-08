@@ -1,12 +1,11 @@
 #pragma once
 
+#include "uvio/debug.hpp"
 #include "uvio/net/tcp_stream.hpp"
 
 #include <coroutine>
 #include <memory>
 #include <string_view>
-
-#include <cassert>
 
 #ifndef _WIN32
 #include <netinet/in.h>
@@ -45,10 +44,8 @@ class TcpListener {
         }
         [[nodiscard]]
         auto await_resume() {
-            auto res
-                = uv_accept(reinterpret_cast<uv_stream_t *>(server_),
-                            reinterpret_cast<uv_stream_t *>(client_.get()));
-            assert(res == 0);
+            uv_check(uv_accept(reinterpret_cast<uv_stream_t *>(server_),
+                               reinterpret_cast<uv_stream_t *>(client_.get())));
 
             return TcpStream{std::move(client_)};
         }
@@ -78,19 +75,18 @@ public:
                     reinterpret_cast<const sockaddr *>(&bind_addr),
                     0);
 
-        auto res = uv_listen(reinterpret_cast<uv_stream_t *>(&listen_socket_),
-                             backlog_,
-                             [](uv_stream_t *req, int status) {
-                                 auto data
-                                     = static_cast<AcceptAwaiter *>(req->data);
-                                 data->status_ = status;
-                                 assert(status == 0);
-                                 data->ready_ = true;
-                                 if (data->handle_) {
-                                     data->handle_.resume();
-                                 }
-                             });
-        assert(res == 0);
+        uv_check(uv_listen(reinterpret_cast<uv_stream_t *>(&listen_socket_),
+                           backlog_,
+                           [](uv_stream_t *req, int status) {
+                               auto data
+                                   = static_cast<AcceptAwaiter *>(req->data);
+                               data->status_ = status;
+                               // assert(status == 0);
+                               data->ready_ = true;
+                               if (data->handle_) {
+                                   data->handle_.resume();
+                               }
+                           }));
     }
 
     auto accept() noexcept {

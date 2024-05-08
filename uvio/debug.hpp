@@ -2,6 +2,8 @@
 
 #include "uvio/log.hpp"
 
+#include "uv.h"
+
 #ifndef NDEBUG
 
 static inline auto &debug_logger = uvio::log::console;
@@ -27,3 +29,9 @@ static inline auto &debug_logger = uvio::log::console;
 #define LOG_FATAL(...)
 
 #endif
+
+static inline auto uv_check(int retval) {
+    if (retval != 0) {
+        LOG_ERROR("UV_ERROR: {}", uv_strerror(retval));
+    }
+}

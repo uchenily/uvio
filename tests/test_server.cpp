@@ -1,6 +1,5 @@
+#include "uvio/debug.hpp"
 #include "uvio/log.hpp"
-
-#include <cassert>
 
 #include "uv.h"
 
@@ -18,7 +17,7 @@ auto main() -> int {
 
     // UV_EXTERN int uv_listen(uv_stream_t* stream, int backlog,
     // uv_connection_cb cb);
-    uv_listen(
+    uv_check(uv_listen(
         reinterpret_cast<uv_stream_t *>(&server),
         64,
         [](uv_stream_t *server, int status) {
@@ -30,14 +29,13 @@ auto main() -> int {
             auto client = new uv_tcp_t;
             uv_tcp_init(uv_default_loop(), client);
 
-            auto res
-                = uv_accept(server, reinterpret_cast<uv_stream_t *>(client));
-            assert(res == 0);
+            uv_check(
+                uv_accept(server, reinterpret_cast<uv_stream_t *>(client)));
 
             // UV_EXTERN int uv_read_start(uv_stream_t*,
             //                             uv_alloc_cb alloc_cb,
             //                             uv_read_cb read_cb);
-            res = uv_read_start(
+            uv_check(uv_read_start(
                 reinterpret_cast<uv_stream_t *>(client),
                 [](uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
                     (void) handle;
@@ -94,9 +92,8 @@ auto main() -> int {
 
                         delete[] buf->base;
                     }(client, nread, buf);
-                });
-            assert(res == 0);
-        });
+                }));
+        }));
 
     console.info("Listening on {}:{} ...", HOST, PORT);
     return uv_run(uv_default_loop(), UV_RUN_DEFAULT);

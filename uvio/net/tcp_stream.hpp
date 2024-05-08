@@ -1,11 +1,10 @@
 #pragma once
 
+#include "uvio/debug.hpp"
 #include "uvio/log.hpp"
 
 #include <coroutine>
 #include <memory>
-
-#include <cassert>
 
 #include "uv.h"
 
@@ -56,7 +55,7 @@ public:
                 , buf_{buf} {
                 socket_->data = this;
 
-                auto res = uv_read_start(
+                uv_check(uv_read_start(
                     reinterpret_cast<uv_stream_t *>(socket_),
                     [](uv_handle_t *handle,
                        size_t       suggested_size,
@@ -84,9 +83,7 @@ public:
                         if (data->handle_) {
                             data->handle_.resume();
                         }
-                    });
-
-                assert(res == 0);
+                    }));
             }
 
             auto await_ready() const -> bool {
@@ -125,23 +122,22 @@ public:
 
                 uv_buf_t buf = uv_buf_init(to_write_.data(), to_write_.size());
 
-                int res = uv_write(&req,
-                                   reinterpret_cast<uv_stream_t *>(socket_),
-                                   &buf,
-                                   1,
-                                   [](uv_write_t *req, int status) {
-                                       auto data = static_cast<WriteAwaiter *>(
-                                           req->data);
-                                       data->status_ = status;
-                                       if (status != 0) {
-                                           console.error("Write error: {}",
-                                                         uv_strerror(status));
-                                       }
-                                       if (data->handle_) {
-                                           data->handle_.resume();
-                                       }
-                                   });
-                assert(res == 0);
+                uv_check(uv_write(&req,
+                                  reinterpret_cast<uv_stream_t *>(socket_),
+                                  &buf,
+                                  1,
+                                  [](uv_write_t *req, int status) {
+                                      auto data = static_cast<WriteAwaiter *>(
+                                          req->data);
+                                      data->status_ = status;
+                                      if (status != 0) {
+                                          console.error("Write error: {}",
+                                                        uv_strerror(status));
+                                      }
+                                      if (data->handle_) {
+                                          data->handle_.resume();
+                                      }
+                                  }));
             }
 
             auto await_ready() const noexcept -> bool {
@@ -179,7 +175,7 @@ public:
 
                 connect_req_.data = this;
 
-                auto res = uv_tcp_connect(
+                uv_check(uv_tcp_connect(
                     &connect_req_,
                     client_.get(),
                     reinterpret_cast<const struct sockaddr *>(&dest),
@@ -195,8 +191,7 @@ public:
                         if (data->handle_) {
                             data->handle_.resume();
                         }
-                    });
-                assert(res == 0);
+                    }));
             }
 
             auto await_ready() const noexcept -> bool {
