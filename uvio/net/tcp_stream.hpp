@@ -7,11 +7,11 @@
 
 #include <cassert>
 
-#include <netinet/in.h>
-
 #include "uv.h"
 
 namespace uvio::net {
+
+using namespace uvio::log;
 
 class TcpStream {
 public:
