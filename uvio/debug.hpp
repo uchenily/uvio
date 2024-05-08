@@ -35,3 +35,16 @@ static inline auto uv_check(int retval) {
         LOG_ERROR("UV_ERROR: {}", uv_strerror(retval));
     }
 }
+
+#ifndef NDEBUG
+
+#include <cassert>
+#define ASSERT(x) assert(x)
+#define ASSERT_MSG(x, msg) ASSERT((x) && (msg))
+
+#else
+
+#define ASSERT(x)
+#define ASSERT_MSG(x, msg)
+
+#endif
