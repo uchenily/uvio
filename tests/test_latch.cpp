@@ -10,9 +10,9 @@ auto latch_test(Latch &latch, std::atomic<std::size_t> &sum) -> Task<> {
     co_await latch.arrive_and_wait();
 }
 
-auto test(std::size_t n) -> Task<> {
+auto test(std::ptrdiff_t n) -> Task<> {
     assert(n >= 1);
-    Latch latch{static_cast<std::ptrdiff_t>(n)};
+    Latch latch{n};
 
     std::atomic<std::size_t> sum = 0;
     assert(latch.try_wait() == false);
@@ -23,7 +23,7 @@ auto test(std::size_t n) -> Task<> {
     sum.fetch_add(1, std::memory_order::relaxed);
     co_await latch.arrive_and_wait();
     console.info("expected: {}, actual {}", n, sum.load());
-    assert(n == sum);
+    assert(n - sum == 0);
 }
 
 auto main() -> int {

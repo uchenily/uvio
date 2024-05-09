@@ -1,4 +1,5 @@
 // origin: https://github.com/8sileus/zedio/blob/main/zedio/sync/latch.hpp
+// https://github.com/LEAVING-7/Coco/blob/main/include/coco/sync/latch.hpp
 #pragma once
 
 #include "uvio/macros.hpp"
@@ -12,7 +13,7 @@ class Latch {
     struct LatchAwaiter {
         std::coroutine_handle<> handle_;
         Latch                  *latch_;
-        LatchAwaiter           *next_{};
+        LatchAwaiter           *next_;
 
         LatchAwaiter(Latch *latch)
             : latch_{latch} {}
@@ -30,7 +31,8 @@ class Latch {
                 std::memory_order::acq_rel,
                 std::memory_order::relaxed)) {
             }
-            return !latch_->try_wait();
+            // return !latch_->try_wait();
+            return true;
         }
 
         auto await_resume() const noexcept {}
@@ -48,7 +50,7 @@ public:
     auto operator=(Latch &&) -> Latch & = delete;
 
     auto count_down(std::ptrdiff_t update = 1) -> void {
-        auto odd = expected_.fetch_sub(update, std::memory_order::release);
+        auto odd = expected_.fetch_sub(update, std::memory_order::acquire);
         if (odd == update) {
             notify_all();
         }

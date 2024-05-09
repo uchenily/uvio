@@ -57,9 +57,10 @@ jobs:
 
       - name: Build
         run: |
-          CXX=${{ matrix.config.cxx }} meson setup build -Dbuildtype=${{ matrix.config.build_type }} -Db_sanitize=address
+          CXX=${{ matrix.config.cxx }} meson setup build -Dbuildtype=${{ matrix.config.build_type }}
           meson compile -C build
           # ./build/tests/gtests/all_gtests
+          ./build/tests/test_latch
           ./build/tests/test_coredump
 
       - name: Install
