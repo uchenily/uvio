@@ -22,4 +22,4 @@ foreach source: all_tests_sources
     dependencies: dependencies)
 endforeach
 
-# subdir('gtests')
+subdir('gtests')
