@@ -1,5 +1,7 @@
 #pragma once
 
+#include "uvio/macros.hpp"
+
 #include <chrono>
 #include <coroutine>
 
@@ -50,6 +52,7 @@ namespace detail {
 
 } // namespace detail
 
+[[REMEMBER_CO_AWAIT]]
 static inline auto sleep(const std::chrono::milliseconds &duration) {
     return detail::SleepAwaiter{static_cast<uint64_t>(duration.count())};
 }

@@ -2,6 +2,7 @@
 
 #include "uvio/debug.hpp"
 #include "uvio/log.hpp"
+#include "uvio/macros.hpp"
 
 #include <coroutine>
 #include <memory>
@@ -43,6 +44,7 @@ private:
     std::unique_ptr<uv_tcp_t> tcp_handle_;
 
 public:
+    [[REMEMBER_CO_AWAIT]]
     auto read(std::span<char> buf) const {
         struct ReadAwaiter {
             std::coroutine_handle<> handle_;
@@ -106,6 +108,7 @@ public:
         return ReadAwaiter{tcp_handle_.get(), buf};
     }
 
+    [[REMEMBER_CO_AWAIT]]
     auto write(std::string_view message) {
         struct WriteAwaiter {
             std::coroutine_handle<> handle_;
@@ -158,6 +161,7 @@ public:
     }
 
 public:
+    [[REMEMBER_CO_AWAIT]]
     static auto connect(std::string_view addr, int port) {
         struct ConnectAwaiter {
 

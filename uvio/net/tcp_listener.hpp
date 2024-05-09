@@ -1,6 +1,7 @@
 #pragma once
 
 #include "uvio/debug.hpp"
+#include "uvio/macros.hpp"
 #include "uvio/net/tcp_stream.hpp"
 
 #include <coroutine>
@@ -89,6 +90,7 @@ public:
                            }));
     }
 
+    [[REMEMBER_CO_AWAIT]]
     auto accept() noexcept {
         return AcceptAwaiter{&listen_socket_};
     }

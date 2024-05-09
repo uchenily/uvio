@@ -1,8 +1,8 @@
-all_tests_sources = [
+all_examples_sources = [
   'http_server.cpp',
 ]
 
-foreach source: all_tests_sources
+foreach source: all_examples_sources
   executable(source.replace('.cpp', ''), source,
     include_directories: includes,
     cpp_args: compile_args,
