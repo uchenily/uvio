@@ -55,7 +55,7 @@ namespace detail {
 } // namespace detail
 
 [[REMEMBER_CO_AWAIT]]
-static inline auto execute(std::function<void()> &&func) {
+static inline auto execute(std::function<void()> func) {
     return detail::WorkAwaiter{std::move(func)};
 }
 

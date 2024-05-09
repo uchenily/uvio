@@ -1,12 +1,10 @@
 #include "uvio/core.hpp"
 #include "uvio/time.hpp"
-#include "uvio/work.hpp"
 
 #include <thread>
 
 using namespace uvio;
 using namespace uvio::time;
-using namespace uvio::work;
 
 auto block_task() {
     console.info("block task start");
@@ -22,8 +20,9 @@ auto print_task() -> Task<> {
 }
 
 auto test() -> Task<> {
+    spawn(block_task);
     spawn(print_task());
-    co_await execute(block_task);
+    co_return;
 }
 
 auto main() -> int {

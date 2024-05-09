@@ -2,12 +2,16 @@
 
 #include "uvio/coroutine/task.hpp"
 #include "uvio/log.hpp"
+#include "uvio/work.hpp"
+
+#include <functional>
 
 #include "uv.h"
 
 namespace uvio {
 
 using namespace uvio::log;
+using namespace uvio::work;
 
 namespace detail {
     static inline auto run_loop() -> int {
@@ -37,6 +41,14 @@ static inline auto spawn(Task<> &&task) {
     console.debug("spawn task ...");
     handle.resume();
     console.debug("spawn end.");
+}
+
+static inline auto spawn(std::function<void()> &&func) {
+    auto task = [func = std::move(func)]() -> Task<> {
+        co_await execute(func);
+    }();
+    auto handle = task.take();
+    handle.resume();
 }
 
 } // namespace uvio
