@@ -1,18 +1,18 @@
 #include "uvio/core.hpp"
 #include "uvio/net.hpp"
 #include "uvio/sync.hpp"
+#include "uvio/time.hpp"
 
 #include "gtest/gtest.h"
 
 using namespace uvio;
 using namespace uvio::net;
+using namespace uvio::time;
 using namespace uvio::sync;
 
 TEST(TestTcpListener, ListenAndAccept) {
-    Latch start(3);
-    Latch finish(3);
 
-    auto server = [&]() -> Task<> {
+    auto server = [](Latch &start, Latch &finish) -> Task<> {
         std::array<char, 64> buf{};
 
         auto listener = TcpListener();
@@ -28,7 +28,7 @@ TEST(TestTcpListener, ListenAndAccept) {
         finish.count_down();
     };
 
-    auto client = [&]() -> Task<> {
+    auto client = [](Latch &start, Latch &finish) -> Task<> {
         std::array<char, 64> buf{};
 
         co_await start.arrive_and_wait();
@@ -41,12 +41,14 @@ TEST(TestTcpListener, ListenAndAccept) {
         finish.count_down();
     };
 
-    auto wait = [](Latch &start, Latch &finish) -> Task<> {
+    auto test = [&]() -> Task<> {
+        Latch start(3);
+        Latch finish(3);
+        spawn(server(start, finish));
+        spawn(client(start, finish));
         co_await start.arrive_and_wait();
         co_await finish.arrive_and_wait();
     };
 
-    spawn(server());
-    spawn(client());
-    block_on(wait(start, finish));
+    block_on(test());
 }

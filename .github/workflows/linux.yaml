@@ -4,13 +4,15 @@ on:
   push:
     branches:
       - main
+      - fix#*
     paths:
       - "uvio/**"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "uvio/**"
+      - "tests/**"
+  # pull_request:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - "uvio/**"
 
 jobs:
   build_linux:
