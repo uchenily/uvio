@@ -26,7 +26,7 @@ static inline auto block_on(Task<> &&first_coro) {
     console.debug("loop run ...");
     handle.resume();
 
-#ifndef NDEBUG
+#if !defined(NDEBUG)
     console.debug("{:*^30}", "[all handles]");
     uv_print_all_handles(uv_default_loop(), stdout);
     console.debug("{:*^30}", "[active handles]");

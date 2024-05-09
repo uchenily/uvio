@@ -8,11 +8,11 @@
 #include <memory>
 #include <string_view>
 
-#ifndef _WIN32
+#if defined(_WIN32)
+#include <winsock2.h>
+#else
 #include <netinet/in.h>
 #include <sys/socket.h>
-#else
-#include <winsock2.h>
 #endif
 
 #include "uv.h"
