@@ -33,14 +33,14 @@ public:
 
     ~TcpStream() {
         if (tcp_handle_) {
-            if (uv_is_closing(
-                    reinterpret_cast<uv_handle_t *>(tcp_handle_.get()))
-                == 0) {
-                uv_close(reinterpret_cast<uv_handle_t *>(tcp_handle_.get()),
-                         [](uv_handle_t *handle) {
-                             (void) handle;
-                         });
-            }
+            // if (uv_is_closing(
+            //         reinterpret_cast<uv_handle_t *>(tcp_handle_.get()))
+            //     == 0) {
+            //     uv_close(reinterpret_cast<uv_handle_t *>(tcp_handle_.get()),
+            //              [](uv_handle_t *handle) {
+            //                  (void) handle;
+            //              });
+            // }
         }
     }
 
