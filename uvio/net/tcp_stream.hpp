@@ -113,13 +113,12 @@ public:
         struct WriteAwaiter {
             std::coroutine_handle<> handle_;
             uv_tcp_t               *socket_;
-            int                     status_{0};
+            int                     status_{1};
             std::string             to_write_;
             uv_write_t              req{};
 
             WriteAwaiter(uv_tcp_t *socket, std::string_view message)
                 : socket_{socket}
-                , status_{1}
                 , to_write_{message.data(), message.size()} {
                 req.data = this;
 
