@@ -34,16 +34,18 @@ jobs:
       - name: Setup
         run: |
           apt-get update
-          apt-get install -y curl git pkg-config
+          apt-get install -y curl git pkg-config ccache
+          apt-get install -y ninja-build meson
+          apt-get install -y libuv1-dev
 
-      - name: Setup Python
-        uses: actions/setup-python@main
-        with:
-          python-version: '3.12'
+      # - name: Setup Python
+      #   uses: actions/setup-python@main
+      #   with:
+      #     python-version: '3.12'
 
-      - name: Install Meson/Ninja
-        run: |
-          python3 -m pip install meson ninja
+      # - name: Install Meson/Ninja
+      #   run: |
+      #     python3 -m pip install meson ninja
 
       # - name: Install
       #   run: |

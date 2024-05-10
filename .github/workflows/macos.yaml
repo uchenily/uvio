@@ -24,10 +24,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@main
 
-      - name: Setup
+      - name: Brew install
         run: |
           # brew install curl git pkg-config llvm
           brew install curl git pkg-config
+          brew install libuv
 
       - name: Setup Python
         uses: actions/setup-python@main
