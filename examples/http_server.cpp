@@ -19,8 +19,8 @@ auto process(TcpStream stream) -> Task<> {
         co_return;
     }
 
-    console.debug("<<< `{}`", buf.data());
-    console.debug(">>> `{}`", response);
+    LOG_DEBUG("<<< `{}`", buf.data());
+    LOG_DEBUG(">>> `{}`", response);
     co_await stream.write(response);
     co_return;
 }
@@ -39,5 +39,6 @@ auto server() -> Task<> {
 }
 
 auto main() -> int {
+    SET_LOG_LEVEL(LogLevel::WARN);
     block_on(server());
 }
