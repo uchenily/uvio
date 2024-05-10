@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "uvio/**"
+      - "tests/**"
+      - ".github/workflows/linux.yaml"
   pull_request:
     branches:
       - main
