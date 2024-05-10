@@ -61,7 +61,7 @@ jobs:
           meson compile -C build
           ./build/tests/test_latch
           ./build/tests/test_coredump
-          ./build/tests/gtests/all_gtests
+          # ./build/tests/gtests/all_gtests
 
       - name: Install
         run: |

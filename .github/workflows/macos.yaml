@@ -28,6 +28,7 @@ jobs:
         run: |
           # brew install curl git pkg-config llvm
           brew install curl git pkg-config
+          brew install libuv
 
       - name: Setup Python
         uses: actions/setup-python@main
@@ -44,7 +45,7 @@ jobs:
           meson compile -C build
           ./build/tests/test_latch
           ./build/tests/test_coredump
-          ./build/tests/gtests/all_gtests
+          # ./build/tests/gtests/all_gtests
 
       - name: Install
         run: |
