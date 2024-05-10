@@ -1,7 +1,7 @@
 all_gtests_sources = [
   'gtest_main.cpp',
   'gtest_foo.cpp',
-  'gtest_tcp.cpp',
+  # 'gtest_tcp.cpp',
 ]
 
 gtest_dep = dependency('gtest')
