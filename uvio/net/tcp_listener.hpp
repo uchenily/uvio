@@ -62,13 +62,14 @@ public:
     }
 
     ~TcpListener() {
-        // if (uv_is_closing(reinterpret_cast<uv_handle_t *>(&listen_socket_))
-        //     == 0) {
-        //     uv_close(reinterpret_cast<uv_handle_t *>(&listen_socket_),
-        //              [](uv_handle_t *handle) {
-        //                  (void) handle;
-        //              });
-        // }
+        if (uv_is_closing(reinterpret_cast<uv_handle_t *>(&listen_socket_))
+            == 0) {
+            // uv_close(reinterpret_cast<uv_handle_t *>(&listen_socket_),
+            //          [](uv_handle_t *handle) {
+            //              (void) handle;
+            //          });
+            uv_close(reinterpret_cast<uv_handle_t *>(&listen_socket_), nullptr);
+        }
     }
 
 public:
