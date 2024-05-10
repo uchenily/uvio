@@ -29,9 +29,9 @@ jobs:
       #   with:
       #     python-version: '3.12'
 
-      - name: Install dependencies
-        run: |
-          vcpkg install libuv:x64-windows
+      # - name: Install dependencies
+      #   run: |
+      #     vcpkg install libuv:x64-windows
 
       - name: Prepare msvc toolchain
         uses: ilammy/msvc-dev-cmd@v1
