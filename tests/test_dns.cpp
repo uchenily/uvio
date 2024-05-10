@@ -1,6 +1,6 @@
 #include "uvio/log.hpp"
 
-#include "netdb.h"
+// #include <netdb.h>
 
 #include "uv.h"
 
