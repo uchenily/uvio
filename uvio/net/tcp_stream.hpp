@@ -18,9 +18,11 @@ public:
     TcpStream(std::unique_ptr<uv_tcp_t> socket)
         : tcp_handle_{std::move(socket)} {}
 
-    TcpStream(TcpStream &&other) noexcept
-        : tcp_handle_{std::move(other.tcp_handle_)} {
-        other.tcp_handle_ = nullptr;
+    TcpStream(TcpStream &&other) noexcept {
+        if (std::addressof(other) != this) {
+            tcp_handle_ = std::move(other.tcp_handle_);
+            other.tcp_handle_ = nullptr;
+        }
     }
     auto operator=(TcpStream &&other) noexcept -> TcpStream & {
         this->tcp_handle_ = std::move(other.tcp_handle_);
@@ -32,10 +34,19 @@ public:
     auto operator=(const TcpStream &) = delete;
 
     ~TcpStream() {
+        // uv__finish_close: Assertion `0' failed.
+        // Aborted (core dumped)
+        // if (tcp_handle_) {
+        //     uv_close(reinterpret_cast<uv_handle_t *>(tcp_handle_.get()),
+        //              [](uv_handle_t *handle) {
+        //                  (void) handle;
+        //              });
+        // }
+
         if (tcp_handle_) {
-            uv_close(reinterpret_cast<uv_handle_t *>(tcp_handle_.get()),
+            uv_close(reinterpret_cast<uv_handle_t *>(tcp_handle_.release()),
                      [](uv_handle_t *handle) {
-                         (void) handle;
+                         delete reinterpret_cast<uv_tcp_t *>(handle);
                      });
         }
     }

@@ -14,14 +14,19 @@ Hello, World!
 auto process(TcpStream stream) -> Task<> {
     std::array<char, 128> buf{};
 
-    auto nread = co_await stream.read(buf);
-    if (nread == UV_EOF) {
-        co_return;
-    }
+    while (true) {
+        auto nread = co_await stream.read(buf);
+        if (nread < 0) {
+            break;
+        }
 
-    LOG_DEBUG("<<< `{}`", buf.data());
-    LOG_DEBUG(">>> `{}`", response);
-    co_await stream.write(response);
+        LOG_DEBUG("<<< `{}`", buf.data());
+        LOG_DEBUG(">>> `{}`", response);
+        auto ok = co_await stream.write(response);
+        if (!ok) {
+            break;
+        }
+    }
     co_return;
 }
 

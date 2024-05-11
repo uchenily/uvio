@@ -27,7 +27,7 @@ auto process(TcpStream stream) -> Task<> {
         std::array<char, 1024> buf{};
 
         auto nread = co_await stream.read(buf);
-        if (nread == UV_EOF) {
+        if (nread < 0) {
             break;
         }
         console.info("Received: `{}`", buf.data());
@@ -64,7 +64,7 @@ nc localhost 8000 -v
 
 ## 功能
 
-- [ ] 异步TCP
+- [x] 异步TCP
 - [ ] 异步UDP
 - [ ] 异步DNS解析
 - [ ] 异步文件IO
@@ -73,7 +73,7 @@ nc localhost 8000 -v
 - [ ] 管道
 - [ ] 信号处理
 - [ ] 子进程
-- [ ] 线程池
+- [x] 线程池
 - [ ] 同步原语
 
 ## 原始目标

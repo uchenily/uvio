@@ -10,8 +10,7 @@ auto process(TcpStream stream) -> Task<> {
         std::array<char, 1024> buf{};
 
         auto nread = co_await stream.read(buf);
-        if (nread == UV_EOF) {
-            console.info("EOF");
+        if (nread < 0) {
             break;
         }
         console.info("read from tcp stream: {}", buf.data());
