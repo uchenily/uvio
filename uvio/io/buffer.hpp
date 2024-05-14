@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <memory>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -14,11 +15,9 @@ namespace uvio::io::detail {
 /// +-------------+---------------+---------------+
 /// 0    <=     r_pos_   <=     w_pos_    <=     size
 ///               |<-r_remaining->|<-w_remaining->|
-class StreamBuffer {
-public:
-    StreamBuffer(std::size_t size)
-        : buf_(size) {}
 
+template <int SIZE>
+class StreamBuffer {
 public:
     auto r_remaining() const noexcept -> int {
         return w_pos_ - r_pos_;
@@ -132,9 +131,12 @@ public:
         static_cast<std::size_t>(8 * 1024)};
 
 private:
-    std::vector<char> buf_;
-    int               r_pos_{0};
-    int               w_pos_{0};
+    using BufPtr = std::unique_ptr<std::array<char, SIZE>>;
+
+private:
+    BufPtr buf_;
+    int    r_pos_{0};
+    int    w_pos_{0};
 };
 
 } // namespace uvio::io::detail
