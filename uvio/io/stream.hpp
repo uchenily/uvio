@@ -32,6 +32,18 @@ public:
 public:
     [[REMEMBER_CO_AWAIT]]
     auto read(std::span<char> buf) {
+        // When buf is large enough, it's not necessory for additional copy from
+        // StreamBuffer to buf
+        if (r_stream_.capacity() < buf.size_bytes()) {
+            auto len = r_stream_.write_to(buf);
+            buf = buf.subspan(len, buf.size_bytes() - len);
+            auto ret = co_await io_.read(buf);
+            if (ret) {
+                ret.value() += len;
+            }
+            co_return ret;
+        }
+
         if (!r_stream_.empty()) {
             co_return r_stream_.write_to(buf);
         }
