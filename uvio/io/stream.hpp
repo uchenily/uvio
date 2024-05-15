@@ -50,6 +50,7 @@ public:
 
         std::size_t ret{};
         while (true) {
+            // TODO(x)
             if (r_stream_.r_remaining() + r_stream_.w_remaining()
                 < buf.size_bytes()) {
                 r_stream_.reset_data();
@@ -65,6 +66,49 @@ public:
                 co_return r_stream_.write_to(buf);
             }
         }
+    }
+
+    [[REMEMBER_CO_AWAIT]]
+    auto write(std::span<const char> buf) {
+        if (w_stream_.w_remaining() >= buf.size_bytes()) {
+            co_return w_stream_.read_from(buf);
+        }
+
+        std::size_t written_bytes{};
+        std::size_t ret{};
+        std::size_t ret2{};
+        do {
+            if (w_stream_.r_remaining() > 0) {
+                ret = co_await io_.write(w_stream_.r_slice());
+                if (ret < 0) {
+                    co_return ret;
+                }
+
+                ret2 = co_await io_.write(buf);
+                if (ret2 < 0) {
+                    co_return ret2;
+                }
+
+                ret += ret2;
+            } else {
+                ret = co_await io_.write(buf);
+                if (ret < 0) {
+                    co_return ret;
+                }
+            }
+
+            auto len = std::min(ret, w_stream_.r_remaining());
+            w_stream_.r_increase(len);
+            // TODO(x): optimize
+            w_stream_.reset_data();
+            ret -= len;
+            written_bytes += ret;
+            buf = buf.subspan(ret, buf.size_bytes() - ret);
+            break;
+        } while (w_stream_.w_remaining() < buf.size_bytes());
+
+        written_bytes += w_stream_.read_from(buf);
+        co_return written_bytes;
     }
 
 public:
