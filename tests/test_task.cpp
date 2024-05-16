@@ -7,14 +7,32 @@ auto test() -> Task<> {
     co_return;
 }
 
-auto test_call3() -> Task<> {
-    console.info("test_call3");
-    co_return;
+auto test_call3() -> Task<std::string> {
+    co_return std::string{"hello"};
+}
+
+auto test_call4() {
+    console.info("test_call4");
+    struct Awaiter {
+        auto await_ready() const noexcept -> bool {
+            return true;
+        }
+        auto await_suspend(
+            [[maybe_unused]] std::coroutine_handle<> handle) noexcept {}
+        [[nodiscard]]
+        auto await_resume() noexcept {
+            return std::string{"world"};
+        }
+    };
+    return Awaiter{};
 }
 
 auto test_call2() -> Task<> {
     console.info("test_call2 start");
-    co_await test_call3();
+    auto res = co_await test_call3();
+    console.info("co_await test_call3() res: {}", res);
+    auto res2 = co_await test_call4();
+    console.info("co_await test_call4() res: {}", res2);
     console.info("test_call2 end");
 }
 

@@ -1,7 +1,10 @@
 #pragma once
 
+#include "uvio/debug.hpp"
+
 #include <coroutine>
 #include <exception>
+#include <optional>
 
 namespace uvio {
 
@@ -9,35 +12,34 @@ template <typename T>
 class Task;
 
 namespace detail {
-    template <typename T>
-    class TaskPromise {
+    class TaskPromiseBase {
+        struct FinalAwaiter {
+            auto await_ready() const noexcept -> bool {
+                return false;
+            }
+            template <typename TaskPromise>
+            auto await_suspend(std::coroutine_handle<TaskPromise> callee)
+                const noexcept -> std::coroutine_handle<> {
+                if (callee.promise().caller_ != nullptr) {
+                    return callee.promise().caller_;
+                } else {
+                    callee.destroy();
+                    return std::noop_coroutine();
+                }
+            }
+            auto await_resume() const noexcept {}
+        };
+
     public:
-        auto get_return_object() noexcept -> Task<T>;
+        // auto get_return_object() noexcept -> Task<?>;
 
         auto initial_suspend() const noexcept -> std::suspend_always {
             return {};
         }
 
         auto final_suspend() noexcept {
-            struct FinalAwaiter {
-                auto await_ready() const noexcept -> bool {
-                    return false;
-                }
-                auto await_suspend(std::coroutine_handle<TaskPromise> callee)
-                    const noexcept -> std::coroutine_handle<> {
-                    if (callee.promise().caller_ != nullptr) {
-                        return callee.promise().caller_;
-                    } else {
-                        callee.destroy();
-                        return std::noop_coroutine();
-                    }
-                }
-                auto await_resume() const noexcept {}
-            };
             return FinalAwaiter{};
         }
-
-        auto return_void() const noexcept {}
 
         auto unhandled_exception() {
             std::terminate();
@@ -45,6 +47,34 @@ namespace detail {
 
     public:
         std::coroutine_handle<> caller_{nullptr};
+    };
+
+    template <typename T>
+    class TaskPromise final : public TaskPromiseBase {
+    public:
+        auto get_return_object() noexcept -> Task<T>;
+
+        auto return_value(T &&value) noexcept {
+            value_ = std::move(value);
+        }
+
+        auto result() const noexcept {
+            ASSERT(value_.has_value());
+            return value_.value();
+        }
+
+    private:
+        std::optional<T> value_{std::nullopt};
+    };
+
+    template <>
+    class TaskPromise<void> final : public TaskPromiseBase {
+    public:
+        auto get_return_object() noexcept -> Task<void>;
+
+        auto return_void() const noexcept {}
+
+        auto result() const noexcept {}
     };
 
 } // namespace detail
@@ -55,7 +85,7 @@ public:
     using promise_type = uvio::detail::TaskPromise<T>;
 
     Task(std::coroutine_handle<promise_type> handle)
-        : handle_(handle) {}
+        : handle_{handle} {}
 
     ~Task() {
         if (handle_) {
@@ -81,7 +111,10 @@ public:
                 return callee_;
             }
 
-            auto await_resume() const noexcept {}
+            auto await_resume() const noexcept {
+                ASSERT_MSG(callee_, "no callee");
+                return callee_.promise().result();
+            }
         };
         return Awaitable{handle_};
     }
@@ -103,6 +136,11 @@ template <typename T>
 inline auto uvio::detail::TaskPromise<T>::get_return_object() noexcept
     -> Task<T> {
     return Task<T>{std::coroutine_handle<TaskPromise>::from_promise(*this)};
+}
+
+inline auto uvio::detail::TaskPromise<void>::get_return_object() noexcept
+    -> Task<void> {
+    return Task<void>{std::coroutine_handle<TaskPromise>::from_promise(*this)};
 }
 
 } // namespace uvio
