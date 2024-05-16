@@ -23,5 +23,6 @@ dependencies += libuv_dep
 
 subdir('tests')
 subdir('examples')
+subdir('benchmark')
 
 install_subdir('uvio', install_dir: 'include')

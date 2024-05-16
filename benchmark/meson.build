@@ -1,7 +1,8 @@
-all_examples_sources = [
+cpp_benchmarks_sources = [
+  'benchmark_uvio.cpp',
 ]
 
-foreach source: all_examples_sources
+foreach source: cpp_benchmarks_sources
   executable(source.replace('.cpp', ''), source,
     include_directories: includes,
     cpp_args: compile_args,

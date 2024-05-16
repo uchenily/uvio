@@ -104,6 +104,10 @@ cp -r uvio xxx_path
 
 clang (>= 17) 或 gcc (>= 13) 或 apple clang (>= 15) 或 MSVC (>= 19)
 
+## 基准测试
+
+[benchmark](./benchmark/benchmark.md)
+
 ## 致谢
 
 项目设计与实现参考了以下开源项目, 在此表示感谢!
