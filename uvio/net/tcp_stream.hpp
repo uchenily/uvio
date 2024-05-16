@@ -75,6 +75,8 @@ public:
                        uv_buf_t    *buf) {
                         (void) suggested_size;
                         auto data = static_cast<ReadAwaiter *>(handle->data);
+                        LOG_DEBUG("ReadAwaiter data->buf_.size(): {}",
+                                  data->buf_.size());
                         *buf
                             = uv_buf_init(data->buf_.data(), data->buf_.size());
                     },
@@ -82,8 +84,7 @@ public:
                         (void) buf;
                         auto data = static_cast<ReadAwaiter *>(req->data);
                         data->nread_ = nread;
-                        if (nread > 0) {
-                        } else if (nread < 0) {
+                        if (nread < 0) {
                             if (nread != UV_EOF) {
                                 console.error(
                                     "Read error: {}",
