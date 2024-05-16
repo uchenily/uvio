@@ -111,6 +111,19 @@ public:
         co_return true;
     }
 
+    [[REMEMBER_CO_AWAIT]]
+    auto flush() -> Task<bool> {
+        // auto ok = co_await io_.write(w_stream_.r_slice());
+        auto ok = co_await io_.write({w_stream_.r_begin(), w_stream_.r_end()});
+        if (!ok) {
+            co_return ok;
+        }
+
+        w_stream_.r_increase(w_stream_.r_remaining());
+        w_stream_.reset_pos();
+        co_return ok;
+    }
+
 public:
     [[nodiscard]]
     auto inner() noexcept -> IO & {
