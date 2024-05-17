@@ -54,8 +54,9 @@ namespace detail {
     public:
         auto get_return_object() noexcept -> Task<T>;
 
-        auto return_value(T &&value) noexcept {
-            value_ = std::move(value);
+        template <typename F>
+        auto return_value(F &&value) noexcept {
+            value_ = std::forward<F>(value);
         }
 
         auto result() const noexcept {
