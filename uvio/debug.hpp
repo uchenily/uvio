@@ -30,11 +30,13 @@ static inline auto &debug_logger = uvio::log::console;
 
 #endif
 
-static inline auto uv_check(int retval) {
-    if (retval != 0) {
-        LOG_ERROR("UV_ERROR: {}", uv_strerror(retval));
-    }
-}
+#define uv_check(condition)                                                    \
+    do {                                                                       \
+        int retval = (condition);                                              \
+        if (retval != 0) {                                                     \
+            LOG_ERROR("UV_ERROR: {}", uv_strerror(retval));                    \
+        }                                                                      \
+    } while (0)
 
 #if !defined(NDEBUG)
 
