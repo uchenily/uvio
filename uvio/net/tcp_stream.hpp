@@ -75,8 +75,6 @@ public:
                        uv_buf_t    *buf) {
                         (void) suggested_size;
                         auto data = static_cast<ReadAwaiter *>(handle->data);
-                        LOG_DEBUG("ReadAwaiter data->buf_.size(): {}",
-                                  data->buf_.size());
                         *buf
                             = uv_buf_init(data->buf_.data(), data->buf_.size());
                     },

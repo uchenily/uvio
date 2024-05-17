@@ -52,18 +52,14 @@ public:
 
         ssize_t ret{};
         while (true) {
-            LOG_DEBUG("in read");
             // TODO(x)
             // if (r_stream_.r_remaining() + r_stream_.w_remaining()
             if (r_stream_.w_remaining() < static_cast<int>(buf.size_bytes())) {
                 r_stream_.reset_data();
             }
 
-            LOG_DEBUG("w_remaining: {}", r_stream_.w_remaining());
             ret = co_await io_.read(r_stream_.w_slice());
-            LOG_DEBUG("io_.read() ret: {}", ret);
             if (ret < 0) {
-                LOG_ERROR(uv_err_name(static_cast<int>(ret)));
                 co_return ret;
             }
             r_stream_.w_increase(ret);
