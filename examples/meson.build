@@ -1,4 +1,5 @@
 all_examples_sources = [
+  'echo_server.cpp',
 ]
 
 foreach source: all_examples_sources
