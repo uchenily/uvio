@@ -9,7 +9,7 @@ namespace uvio::io {
 template <typename IO, int RBUF_SIZE, int WBUF_SIZE>
     requires requires(IO io, std::span<char> buf) {
         { io.read(buf) };
-        { io.write(std::string_view{buf.data(), buf.size()}) };
+        { io.write(buf) };
     }
 class BufStream {
 public:
@@ -75,53 +75,53 @@ public:
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto write(std::string_view buf) -> Task<bool> {
+    auto write(std::span<const char> buf) -> Task<ssize_t> {
         if (w_stream_.w_remaining() >= static_cast<int>(buf.size())) {
             co_return w_stream_.read_from(buf);
         }
 
         std::size_t written_bytes{};
-        bool        ok{};
-        bool        ok2{};
+        ssize_t     nwritten{};
+        ssize_t     nwritten2{};
         if (w_stream_.r_remaining() > 0) {
-            // ok = co_await io_.write(w_stream_.r_slice());
-            ok = co_await io_.write({w_stream_.r_begin(), w_stream_.r_end()});
-            if (!ok) {
-                co_return ok;
+            nwritten = co_await io_.write(w_stream_.r_slice());
+            if (nwritten == 0) {
+                co_return nwritten;
             }
             written_bytes += w_stream_.r_remaining();
             w_stream_.r_increase(w_stream_.r_remaining());
             w_stream_.reset_data();
 
-            ok2 = co_await io_.write(buf);
-            if (!ok2) {
-                co_return ok2;
+            nwritten2 = co_await io_.write(buf);
+            if (nwritten2 == 0) {
+                co_return nwritten2;
             }
             written_bytes += buf.size();
 
         } else {
-            ok = co_await io_.write(buf);
-            if (!ok) {
-                co_return ok;
+            nwritten = co_await io_.write(buf);
+            if (nwritten == 0) {
+                co_return nwritten;
             }
             written_bytes += buf.size();
         }
 
-        // co_return written_bytes;
-        co_return true;
+        co_return written_bytes;
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto flush() -> Task<bool> {
-        // auto ok = co_await io_.write(w_stream_.r_slice());
-        auto ok = co_await io_.write({w_stream_.r_begin(), w_stream_.r_end()});
-        if (!ok) {
-            co_return ok;
-        }
+    auto flush() -> Task<> {
+        while (!w_stream_.r_slice().empty()) {
+            auto nwritten = co_await io_.write(w_stream_.r_slice());
+            if (nwritten == 0) {
+                // TODO(x): raise error
+                co_return;
+            }
 
-        w_stream_.r_increase(w_stream_.r_remaining());
+            w_stream_.r_increase(w_stream_.r_remaining());
+        }
         w_stream_.reset_pos();
-        co_return ok;
+        co_return;
     }
 
 public:

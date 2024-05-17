@@ -14,7 +14,7 @@ auto process(TcpStream stream) -> Task<> {
             break;
         }
         console.info("read from tcp stream: {}", buf.data());
-        co_await stream.write(buf.data());
+        co_await stream.write(buf);
     }
     console.info("process tcp stream end.");
     co_return;

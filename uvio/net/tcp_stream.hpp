@@ -121,37 +121,43 @@ public:
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto write(std::string_view message) {
+    auto write(std::span<const char> message) {
         struct WriteAwaiter {
             std::coroutine_handle<> handle_;
             uv_tcp_t               *socket_;
             int                     status_{1};
+            ssize_t                 nwritten_{0};
             std::string             to_write_;
             uv_write_t              req{};
 
-            WriteAwaiter(uv_tcp_t *socket, std::string_view message)
+            WriteAwaiter(uv_tcp_t *socket, std::span<const char> message)
                 : socket_{socket}
                 , to_write_{message.data(), message.size()} {
                 req.data = this;
 
                 uv_buf_t buf = uv_buf_init(to_write_.data(), to_write_.size());
 
-                uv_check(uv_write(&req,
-                                  reinterpret_cast<uv_stream_t *>(socket_),
-                                  &buf,
-                                  1,
-                                  [](uv_write_t *req, int status) {
-                                      auto data = static_cast<WriteAwaiter *>(
-                                          req->data);
-                                      data->status_ = status;
-                                      if (status != 0) {
-                                          console.error("Write error: {}",
-                                                        uv_strerror(status));
-                                      }
-                                      if (data->handle_) {
-                                          data->handle_.resume();
-                                      }
-                                  }));
+                uv_check(uv_write(
+                    &req,
+                    reinterpret_cast<uv_stream_t *>(socket_),
+                    &buf,
+                    1,
+                    [](uv_write_t *req, int status) {
+                        auto data = static_cast<WriteAwaiter *>(req->data);
+                        data->status_ = status;
+                        if (status != 0) {
+                            console.error("Write error: {}",
+                                          uv_strerror(status));
+                            data->nwritten_ = 0;
+                        } else {
+                            data->nwritten_ = static_cast<ssize_t>(
+                                data->to_write_.length());
+                        }
+
+                        if (data->handle_) {
+                            data->handle_.resume();
+                        }
+                    }));
             }
 
             auto await_ready() const noexcept -> bool {
@@ -162,9 +168,9 @@ public:
                 handle_ = handle;
             }
 
-            auto await_resume() noexcept -> bool {
+            auto await_resume() noexcept -> ssize_t {
                 handle_ = nullptr;
-                return status_ == 0;
+                return nwritten_;
             }
         };
 

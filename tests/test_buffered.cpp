@@ -20,8 +20,11 @@ auto process(TcpStream stream) -> Task<> {
         count++;
 
         console.info("Received: `{}`", small_buf.data());
-        co_await buffered_stream.write(
+        auto nwritten = co_await buffered_stream.write(
             {small_buf.data(), static_cast<std::size_t>(nread)});
+        if (nwritten == 0) {
+            break;
+        }
 
         // read twice before flushing
         if (count % 2 == 0) {
