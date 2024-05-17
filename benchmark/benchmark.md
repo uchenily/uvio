@@ -2,10 +2,10 @@
 
 ## 测试环境
 
-cpu: Intel(R) Xeon(R) CPU E5-2660 v3 @ 2.60GHz
-kernel: 6.8.8-arch1-1
-gcc: (GCC) 14.1.1 20240507
-wrk: 4.2.0 [epoll] Copyright (C) 2012 Will Glozer
+- cpu: Intel(R) Xeon(R) CPU E5-2660 v3 @ 2.60GHz
+- kernel: 6.8.8-arch1-1
+- gcc: (GCC) 14.1.1 20240507
+- wrk: 4.2.0 [epoll] Copyright (C) 2012 Will Glozer
 
 
 ```shell

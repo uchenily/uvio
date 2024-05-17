@@ -62,8 +62,8 @@ public:
     }
 
     auto write_to(std::span<char> dst) noexcept -> std::size_t {
-        auto len = std::min(static_cast<std::size_t>(r_remaining()),
-                            dst.size_bytes());
+        auto len = (std::min)(static_cast<std::size_t>(r_remaining()),
+                              dst.size_bytes());
         std::copy_n(r_begin(), len, dst.begin());
         r_increase(len);
         if (r_pos_ == w_pos_) {
@@ -73,8 +73,8 @@ public:
     }
 
     auto read_from(std::span<const char> src) noexcept -> std::size_t {
-        auto len = std::min(static_cast<std::size_t>(w_remaining()),
-                            src.size_bytes());
+        auto len = (std::min)(static_cast<std::size_t>(w_remaining()),
+                              src.size_bytes());
         std::copy_n(src.begin(), len, w_begin());
         w_increase(len);
         return len;
