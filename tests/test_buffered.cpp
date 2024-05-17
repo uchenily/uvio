@@ -37,7 +37,7 @@ auto test() -> Task<> {
     auto listener = TcpListener();
     listener.bind("localhost", 8000);
     while (true) {
-        auto stream = co_await listener.accept();
+        auto stream = (co_await listener.accept()).value();
         spawn(process(std::move(stream)));
     }
 }

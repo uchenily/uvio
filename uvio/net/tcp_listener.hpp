@@ -1,5 +1,6 @@
 #pragma once
 
+#include "uvio/common/result.hpp"
 #include "uvio/debug.hpp"
 #include "uvio/macros.hpp"
 #include "uvio/net/tcp_stream.hpp"
@@ -44,7 +45,7 @@ class TcpListener {
             handle_ = handle;
         }
         [[nodiscard]]
-        auto await_resume() {
+        auto await_resume() -> Result<TcpStream> {
             uv_check(uv_accept(reinterpret_cast<uv_stream_t *>(server_),
                                reinterpret_cast<uv_stream_t *>(client_.get())));
 
@@ -58,7 +59,7 @@ class TcpListener {
 
 public:
     TcpListener() {
-        uv_tcp_init(uv_default_loop(), &listen_socket_);
+        uv_check(uv_tcp_init(uv_default_loop(), &listen_socket_));
     }
 
     ~TcpListener() {
@@ -69,12 +70,12 @@ public:
     }
 
 public:
-    auto bind(std::string_view addr, int port) {
+    auto bind(std::string_view addr, int port) -> Result<void> {
         struct sockaddr_in bind_addr {};
-        uv_ip4_addr(addr.data(), port, &bind_addr);
-        uv_tcp_bind(&listen_socket_,
-                    reinterpret_cast<const sockaddr *>(&bind_addr),
-                    0);
+        uv_check(uv_ip4_addr(addr.data(), port, &bind_addr));
+        uv_check(uv_tcp_bind(&listen_socket_,
+                             reinterpret_cast<const sockaddr *>(&bind_addr),
+                             0));
 
         uv_check(uv_listen(reinterpret_cast<uv_stream_t *>(&listen_socket_),
                            backlog_,
@@ -88,6 +89,7 @@ public:
                                    data->handle_.resume();
                                }
                            }));
+        return {};
     }
 
     [[REMEMBER_CO_AWAIT]]

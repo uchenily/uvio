@@ -1,3 +1,5 @@
+#pragma once
+
 #include "uvio/common/expected.hpp"
 
 #include <string_view>

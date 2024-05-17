@@ -38,7 +38,7 @@ auto server() -> Task<> {
     listener.bind(host, port);
     console.info("Listening on {}:{} ...", host, port);
     while (true) {
-        auto stream = co_await listener.accept();
+        auto stream = (co_await listener.accept()).value();
         spawn(process(std::move(stream)));
     }
 }
