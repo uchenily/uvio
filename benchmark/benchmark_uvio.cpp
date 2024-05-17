@@ -15,15 +15,15 @@ auto process(TcpStream stream) -> Task<> {
     std::array<char, 128> buf{};
 
     while (true) {
-        auto nread = co_await stream.read(buf);
-        if (nread < 0) {
+        auto rret = co_await stream.read(buf);
+        if (!rret) {
             break;
         }
 
         LOG_DEBUG("<<< `{}`", buf.data());
         LOG_DEBUG(">>> `{}`", response);
-        auto ok = co_await stream.write(response);
-        if (!ok) {
+        auto wret = co_await stream.write(response);
+        if (!wret) {
             break;
         }
     }
@@ -31,7 +31,7 @@ auto process(TcpStream stream) -> Task<> {
 }
 
 auto server() -> Task<> {
-    std::string host{"localhost"};
+    std::string host{"127.0.0.1"};
     int         port{8000};
 
     auto listener = TcpListener();

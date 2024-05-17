@@ -5,11 +5,11 @@ using namespace uvio;
 using namespace uvio::net;
 
 auto client() -> Task<> {
-    std::string host{"localhost"};
+    std::string host{"127.0.0.1"};
     int         port{8000};
     std::string buf(1024, 0);
 
-    auto stream = co_await TcpStream::connect(host, port);
+    auto stream = (co_await TcpStream::connect(host, port)).value();
     console.info("Connected to {}:{}", host, port);
 
     for (int i = 0; i < 3; i++) {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "uvio/common/result.hpp"
 #include "uvio/debug.hpp"
 #include "uvio/log.hpp"
 #include "uvio/macros.hpp"
@@ -104,17 +105,25 @@ public:
             auto await_suspend(std::coroutine_handle<> handle) {
                 this->handle_ = handle;
             }
-            auto await_resume() -> ssize_t {
+            auto await_resume() -> Result<ssize_t> {
                 auto nread = this->nread_;
+                if (nread < 0) {
+                    if (nread == UV_EOF) {
+                        return unexpected{
+                            make_uvio_error(Error::UnexpectedEOF)};
+                    } else {
+                        return unexpected{make_uvio_error(Error::Unclassified)};
+                    }
+                }
                 this->nread_ = 0;
                 this->handle_ = nullptr;
                 socket_->data = nullptr;
 
-                uv_read_stop(reinterpret_cast<uv_stream_t *>(socket_));
+                uv_check(
+                    uv_read_stop(reinterpret_cast<uv_stream_t *>(socket_)));
                 return nread;
             }
         };
-
         return ReadAwaiter{tcp_handle_.get(), buf};
     }
 
@@ -166,12 +175,14 @@ public:
                 handle_ = handle;
             }
 
-            auto await_resume() noexcept -> ssize_t {
+            auto await_resume() noexcept -> Result<ssize_t> {
                 handle_ = nullptr;
+                if (status_ != 0) {
+                    return unexpected{make_uvio_error(Error::WriteZero)};
+                }
                 return nwritten_;
             }
         };
-
         return WriteAwaiter{tcp_handle_.get(), message};
     }
 
@@ -187,10 +198,10 @@ public:
 
             ConnectAwaiter(std::string_view addr, int port)
                 : client_{std::make_unique<uv_tcp_t>()} {
-                uv_tcp_init(uv_default_loop(), client_.get());
+                uv_check(uv_tcp_init(uv_default_loop(), client_.get()));
 
                 struct sockaddr_in dest {};
-                uv_ip4_addr(addr.data(), port, &dest);
+                uv_check(uv_ip4_addr(addr.data(), port, &dest));
 
                 connect_req_.data = this;
 
@@ -222,12 +233,11 @@ public:
             }
 
             [[nodiscard]]
-            auto await_resume() noexcept -> TcpStream {
+            auto await_resume() noexcept -> Result<TcpStream> {
                 handle_ = nullptr;
                 return TcpStream{std::move(client_)};
             }
         };
-
         return ConnectAwaiter{addr, port};
     }
 };

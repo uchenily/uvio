@@ -1,5 +1,6 @@
 #pragma once
 
+#include "uvio/common/result.hpp"
 #include "uvio/coroutine/task.hpp"
 #include "uvio/io/buffer.hpp"
 #include "uvio/macros.hpp"
@@ -32,17 +33,17 @@ public:
 
 public:
     [[REMEMBER_CO_AWAIT]]
-    auto read(std::span<char> buf) -> Task<ssize_t> {
+    auto read(std::span<char> buf) -> Task<Result<ssize_t>> {
         // When buf is large enough, it's not necessory for additional copy from
         // StreamBuffer to buf
         if (r_stream_.capacity() < buf.size_bytes()) {
             auto len = r_stream_.write_to(buf);
             buf = buf.subspan(len, buf.size_bytes() - len);
             auto ret = co_await io_.read(buf);
-            if (ret < 0) {
+            if (!ret) {
                 co_return ret;
             }
-            ret += len;
+            ret.value() += len;
             co_return ret;
         }
 
@@ -50,7 +51,6 @@ public:
             co_return r_stream_.write_to(buf);
         }
 
-        ssize_t ret{};
         while (true) {
             // TODO(x)
             // if (r_stream_.r_remaining() + r_stream_.w_remaining()
@@ -58,66 +58,63 @@ public:
                 r_stream_.reset_data();
             }
 
-            ret = co_await io_.read(r_stream_.w_slice());
-            if (ret < 0) {
+            Result<ssize_t> ret = co_await io_.read(r_stream_.w_slice());
+            if (!ret) {
                 co_return ret;
             }
-            r_stream_.w_increase(ret);
+            r_stream_.w_increase(ret.value());
 
-            if (!r_stream_.empty() || ret == 0) {
+            if (!r_stream_.empty() || ret.value() == 0) {
                 co_return r_stream_.write_to(buf);
             }
         }
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto write(std::span<const char> buf) -> Task<ssize_t> {
+    auto write(std::span<const char> buf) -> Task<Result<ssize_t>> {
         if (w_stream_.w_remaining() >= static_cast<int>(buf.size())) {
             co_return w_stream_.read_from(buf);
         }
 
-        std::size_t written_bytes{};
-        ssize_t     nwritten{};
-        ssize_t     nwritten2{};
+        Result<ssize_t> written_bytes{};
         if (w_stream_.r_remaining() > 0) {
-            nwritten = co_await io_.write(w_stream_.r_slice());
-            if (nwritten == 0) {
-                co_return nwritten;
+            auto ret = co_await io_.write(w_stream_.r_slice());
+            if (!ret) {
+                co_return ret;
             }
-            written_bytes += w_stream_.r_remaining();
+            written_bytes.value() += w_stream_.r_remaining();
             w_stream_.r_increase(w_stream_.r_remaining());
             w_stream_.reset_data();
 
-            nwritten2 = co_await io_.write(buf);
-            if (nwritten2 == 0) {
-                co_return nwritten2;
+            auto ret2 = co_await io_.write(buf);
+            if (!ret2) {
+                co_return ret2;
             }
-            written_bytes += buf.size();
+            written_bytes.value() += static_cast<ssize_t>(buf.size());
 
         } else {
-            nwritten = co_await io_.write(buf);
-            if (nwritten == 0) {
-                co_return nwritten;
+            auto ret = co_await io_.write(buf);
+            if (!ret) {
+                co_return ret;
             }
-            written_bytes += buf.size();
+            written_bytes.value() += static_cast<ssize_t>(buf.size());
         }
 
         co_return written_bytes;
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto flush() -> Task<> {
+    auto flush() -> Task<Result<void>> {
         while (!w_stream_.r_slice().empty()) {
-            auto nwritten = co_await io_.write(w_stream_.r_slice());
-            if (nwritten == 0) {
-                // TODO(x): raise error
-                co_return;
+            auto ret = co_await io_.write(w_stream_.r_slice());
+            if (!ret) {
+                co_return unexpected{ret.error()};
             }
 
             w_stream_.r_increase(w_stream_.r_remaining());
         }
         w_stream_.reset_pos();
-        co_return;
+        co_return Result<void>{};
     }
 
 public:

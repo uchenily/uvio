@@ -9,12 +9,17 @@ auto process(TcpStream stream) -> Task<> {
     while (true) {
         std::array<char, 1024> buf{};
 
-        auto nread = co_await stream.read(buf);
-        if (nread < 0) {
+        auto rret = co_await stream.read(buf);
+        if (!rret) {
+            console.error(rret.error().message());
             break;
         }
         console.info("read from tcp stream: {}", buf.data());
-        co_await stream.write(buf);
+        auto wret = co_await stream.write(buf);
+        if (!wret) {
+            console.error(wret.error().message());
+            break;
+        }
     }
     console.info("process tcp stream end.");
     co_return;

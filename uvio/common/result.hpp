@@ -10,9 +10,11 @@
 namespace uvio {
 
 class Error {
+public:
     enum ErrorCode {
         UnexpectedEOF = 8000,
         WriteZero,
+        Unclassified,
     };
 
 public:
@@ -27,6 +29,8 @@ public:
             return "Read EOF too early";
         case WriteZero:
             return "Write return zero";
+        case Unclassified:
+            return "Unclassified error";
         default:
             return strerror(error_code_);
         }

@@ -23,7 +23,6 @@ namespace uvio::net {
 class TcpListener {
 
     struct AcceptAwaiter {
-
         std::coroutine_handle<>   handle_;
         uv_tcp_t                 *server_;
         std::unique_ptr<uv_tcp_t> client_;

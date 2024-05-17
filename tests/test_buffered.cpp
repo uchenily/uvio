@@ -13,16 +13,18 @@ auto process(TcpStream stream) -> Task<> {
     while (true) {
         std::array<char, 64> small_buf{};
 
-        auto nread = co_await buffered_stream.read(small_buf);
-        if (nread < 0) {
+        auto rret = co_await buffered_stream.read(small_buf);
+        if (!rret) {
+            console.error(rret.error().message());
             break;
         }
         count++;
 
         console.info("Received: `{}`", small_buf.data());
-        auto nwritten = co_await buffered_stream.write(
-            {small_buf.data(), static_cast<std::size_t>(nread)});
-        if (nwritten == 0) {
+        auto wret = co_await buffered_stream.write(
+            {small_buf.data(), static_cast<std::size_t>(rret.value())});
+        if (!wret) {
+            console.error(wret.error().message());
             break;
         }
 
@@ -35,7 +37,7 @@ auto process(TcpStream stream) -> Task<> {
 
 auto test() -> Task<> {
     auto listener = TcpListener();
-    listener.bind("localhost", 8000);
+    listener.bind("127.0.0.1", 8000);
     while (true) {
         auto stream = (co_await listener.accept()).value();
         spawn(process(std::move(stream)));
