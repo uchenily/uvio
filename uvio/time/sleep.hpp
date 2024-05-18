@@ -1,5 +1,6 @@
 #pragma once
 
+#include "uvio/common/result.hpp"
 #include "uvio/macros.hpp"
 
 #include <chrono>
@@ -44,9 +45,10 @@ namespace detail {
             handle_ = handle;
         }
 
-        auto await_resume() noexcept {
+        auto await_resume() noexcept -> Result<void> {
             handle_ = nullptr;
             ready_ = false;
+            return {};
         };
     };
 
