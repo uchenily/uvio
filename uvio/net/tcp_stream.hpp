@@ -1,6 +1,7 @@
 #pragma once
 
 #include "uvio/common/result.hpp"
+#include "uvio/coroutine/task.hpp"
 #include "uvio/debug.hpp"
 #include "uvio/log.hpp"
 #include "uvio/macros.hpp"
@@ -125,6 +126,23 @@ public:
             }
         };
         return ReadAwaiter{tcp_handle_.get(), buf};
+    }
+
+    [[REMEMBER_CO_AWAIT]]
+    auto read_exact(std::span<char> buf) const noexcept -> Task<Result<void>> {
+        Result<ssize_t> ret;
+        while (!buf.empty()) {
+            ret = co_await read(buf);
+            if (!ret) {
+                co_return unexpected{ret.error()};
+            }
+            if (ret.value() == 0) {
+                co_return unexpected{make_uvio_error(Error::UnexpectedEOF)};
+            }
+
+            buf = buf.subspan(ret.value(), buf.size_bytes() - ret.value());
+        }
+        co_return Result<void>{};
     }
 
     [[REMEMBER_CO_AWAIT]]

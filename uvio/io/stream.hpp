@@ -58,7 +58,7 @@ public:
                 r_stream_.reset_data();
             }
 
-            Result<ssize_t> ret = co_await io_.read(r_stream_.w_slice());
+            auto ret = co_await io_.read(r_stream_.w_slice());
             if (!ret) {
                 co_return ret;
             }
@@ -66,6 +66,43 @@ public:
 
             if (!r_stream_.empty() || ret.value() == 0) {
                 co_return r_stream_.write_to(buf);
+            }
+        }
+    }
+
+    [[REMEMBER_CO_AWAIT]]
+    auto read_exact(std::span<char> buf) -> Task<Result<void>> {
+        if (r_stream_.capacity() < buf.size_bytes()) {
+            auto len = r_stream_.write_to(buf);
+            buf = buf.subspan(len, buf.size_bytes() - len);
+            auto ret = co_await io_.read_exact(buf);
+            if (!ret) {
+                co_return ret;
+            }
+            co_return Result<void>{};
+        }
+
+        auto exact_bytes = static_cast<int>(buf.size_bytes());
+
+        if (r_stream_.r_remaining() >= exact_bytes) {
+            r_stream_.write_to(buf);
+            co_return Result<void>{};
+        }
+
+        while (true) {
+            if (r_stream_.w_remaining() < exact_bytes) {
+                r_stream_.reset_data();
+            }
+
+            auto ret = co_await io_.read(r_stream_.w_slice());
+            if (!ret) {
+                co_return unexpected{ret.error()};
+            }
+            r_stream_.w_increase(ret.value());
+
+            if (r_stream_.r_remaining() >= exact_bytes) {
+                r_stream_.write_to(buf);
+                co_return Result<void>{};
             }
         }
     }
