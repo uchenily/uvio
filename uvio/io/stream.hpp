@@ -33,7 +33,7 @@ public:
 
 public:
     [[REMEMBER_CO_AWAIT]]
-    auto read(std::span<char> buf) -> Task<Result<ssize_t>> {
+    auto read(std::span<char> buf) -> Task<Result<std::size_t>> {
         // When buf is large enough, it's not necessory for additional copy from
         // StreamBuffer to buf
         if (r_stream_.capacity() < buf.size_bytes()) {
@@ -108,12 +108,12 @@ public:
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto write(std::span<const char> buf) -> Task<Result<ssize_t>> {
+    auto write(std::span<const char> buf) -> Task<Result<std::size_t>> {
         if (w_stream_.w_remaining() >= static_cast<int>(buf.size())) {
             co_return w_stream_.read_from(buf);
         }
 
-        Result<ssize_t> written_bytes{};
+        Result<std::size_t> written_bytes{};
         if (w_stream_.r_remaining() > 0) {
             auto ret = co_await io_.write(w_stream_.r_slice());
             if (!ret) {
@@ -127,14 +127,14 @@ public:
             if (!ret2) {
                 co_return ret2;
             }
-            written_bytes.value() += static_cast<ssize_t>(buf.size());
+            written_bytes.value() += buf.size();
 
         } else {
             auto ret = co_await io_.write(buf);
             if (!ret) {
                 co_return ret;
             }
-            written_bytes.value() += static_cast<ssize_t>(buf.size());
+            written_bytes.value() += buf.size();
         }
 
         co_return written_bytes;

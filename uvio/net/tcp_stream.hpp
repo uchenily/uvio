@@ -106,7 +106,7 @@ public:
             auto await_suspend(std::coroutine_handle<> handle) {
                 this->handle_ = handle;
             }
-            auto await_resume() -> Result<ssize_t> {
+            auto await_resume() -> Result<std::size_t> {
                 auto nread = this->nread_;
                 if (nread < 0) {
                     if (nread == UV_EOF) {
@@ -122,7 +122,8 @@ public:
 
                 uv_check(
                     uv_read_stop(reinterpret_cast<uv_stream_t *>(socket_)));
-                return nread;
+                // nread == 0 ?
+                return static_cast<std::size_t>(nread);
             }
         };
         return ReadAwaiter{tcp_handle_.get(), buf};
@@ -130,7 +131,7 @@ public:
 
     [[REMEMBER_CO_AWAIT]]
     auto read_exact(std::span<char> buf) const noexcept -> Task<Result<void>> {
-        Result<ssize_t> ret;
+        Result<std::size_t> ret;
         while (!buf.empty()) {
             ret = co_await read(buf);
             if (!ret) {
@@ -151,7 +152,7 @@ public:
             std::coroutine_handle<> handle_;
             uv_tcp_t               *socket_;
             int                     status_{1};
-            ssize_t                 nwritten_{0};
+            std::size_t             nwritten_{0};
             std::string             to_write_;
             uv_write_t              req{};
 
@@ -175,8 +176,7 @@ public:
                                           uv_strerror(status));
                             data->nwritten_ = 0;
                         } else {
-                            data->nwritten_ = static_cast<ssize_t>(
-                                data->to_write_.length());
+                            data->nwritten_ = data->to_write_.length();
                         }
 
                         if (data->handle_) {
@@ -193,9 +193,12 @@ public:
                 handle_ = handle;
             }
 
-            auto await_resume() noexcept -> Result<ssize_t> {
+            auto await_resume() noexcept -> Result<std::size_t> {
                 handle_ = nullptr;
                 if (status_ != 0) {
+                    return unexpected{make_uvio_error(Error::Unclassified)};
+                }
+                if (nwritten_ == 0) {
                     return unexpected{make_uvio_error(Error::WriteZero)};
                 }
                 return nwritten_;
