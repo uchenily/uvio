@@ -1,6 +1,6 @@
 all_tests_sources = [
   'test_log.cpp',
-  'test_backward.cpp',
+  'test_backtrace.cpp',
   'test_libuv.cpp',
   'test_task.cpp',
   'test_timer.cpp',

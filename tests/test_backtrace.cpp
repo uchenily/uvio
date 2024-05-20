@@ -1,11 +1,7 @@
-#include "backward.hpp"
+#include "uvio/common/backtrace.hpp"
 
 #include <iostream>
 #include <vector>
-
-namespace backward {
-backward::SignalHandling sh;
-} // namespace backward
 
 auto main() -> int {
     std::vector<int> vec;

@@ -20,16 +20,18 @@ compile_args = []
 includes = include_directories('.')
 
 libuv_dep = dependency('libuv')
-backward_dep = dependency('backward-cpp')
+libbfd_dep = cxx.find_library('bfd', required: false)
 dependencies = []
 dependencies += libuv_dep
-dependencies += backward_dep
 
-add_project_arguments(['-DBACKWARD_HAS_BFD=1'], language: 'cpp')
+if libbfd_dep.found()
+  dependencies += libbfd_dep
+  add_project_arguments(['-DBACKWARD_HAS_BFD=1'], language: 'cpp')
 # add_project_arguments(['-DBACKWARD_HAS_UNWIND=1'], language: 'cpp')
 # add_project_arguments(['-DBACKWARD_HAS_LIBUNWIND=1'], language: 'cpp')
 # add_project_arguments(['-DBACKWARD_HAS_DW=1'], language: 'cpp') # hang up?
 # add_project_link_arguments(['-rdynamic'], language: 'cpp')
+endif
 
 subdir('tests')
 subdir('examples')
