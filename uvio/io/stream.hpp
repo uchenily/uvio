@@ -137,6 +137,11 @@ public:
     }
 
     [[REMEMBER_CO_AWAIT]]
+    auto read_line(std::string &buf) -> Task<Result<std::size_t>> {
+        return read_until(buf, "\n");
+    }
+
+    [[REMEMBER_CO_AWAIT]]
     auto write(std::span<const char> buf) -> Task<Result<std::size_t>> {
         if (w_stream_.w_remaining() >= static_cast<int>(buf.size())) {
             co_return w_stream_.read_from(buf);
@@ -180,6 +185,17 @@ public:
             w_stream_.r_increase(w_stream_.r_remaining());
         }
         w_stream_.reset_pos();
+        co_return Result<void>{};
+    }
+
+    [[REMEMBER_CO_AWAIT]]
+    auto write_all(std::span<const char> buf) -> Task<Result<void>> {
+        if (auto ret = co_await write(buf); !ret) {
+            co_return unexpected{ret.error()};
+        }
+        if (auto ret = co_await flush(); !ret) {
+            co_return unexpected{ret.error()};
+        }
         co_return Result<void>{};
     }
 
