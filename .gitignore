@@ -7,3 +7,6 @@ a.out
 __pycache__
 misc/*.sh
 misc/*.md
+subprojects/*
+!subprojects/packagefiles/
+!subprojects/*.wrap
