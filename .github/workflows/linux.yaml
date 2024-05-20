@@ -38,7 +38,7 @@ jobs:
           apt-get update
           apt-get install -y curl git pkg-config ccache
           apt-get install -y ninja-build meson
-          apt-get install -y libuv1-dev
+          apt-get install -y libuv1-dev binutils-dev
 
       # - name: Setup Python
       #   uses: actions/setup-python@main
