@@ -33,21 +33,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@main
 
-      - name: Setup
+      - name: Setup dependencies
         run: |
           apt-get update
           apt-get install -y curl git pkg-config ccache
-          apt-get install -y ninja-build meson
           apt-get install -y libuv1-dev binutils-dev
 
-      # - name: Setup Python
-      #   uses: actions/setup-python@main
-      #   with:
-      #     python-version: '3.12'
+      - name: Setup Python
+        if: matrix.config.compiler == 'clang'
+        uses: actions/setup-python@main
+        with:
+          python-version: '3.12'
 
-      # - name: Install Meson/Ninja
-      #   run: |
-      #     python3 -m pip install meson ninja
+      - name: Install Meson/Ninja(apt)
+        if: matrix.config.compiler == 'gcc'
+        run: |
+          apt-get install -y ninja-build meson
+
+      - name: Install Meson/Ninja(pip)
+        if: matrix.config.compiler == 'clang'
+        run: |
+          python3 -m pip install meson ninja
 
       # - name: Install
       #   run: |
