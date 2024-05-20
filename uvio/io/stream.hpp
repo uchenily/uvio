@@ -108,6 +108,35 @@ public:
     }
 
     [[REMEMBER_CO_AWAIT]]
+    auto read_until(std::string &buf, std::string_view end_flag)
+        -> Task<Result<std::size_t>> {
+        Result<std::size_t> ret;
+        while (true) {
+            if (auto slice = r_stream_.find_flag_and_return_slice(end_flag);
+                !slice.empty()) {
+                buf.append(slice.begin(), slice.end());
+                r_stream_.r_increase(slice.size_bytes());
+                break;
+            } else {
+                auto readable = r_stream_.r_slice();
+                buf.append(readable.begin(), readable.end());
+                r_stream_.reset_pos();
+            }
+
+            ret = co_await io_.read(r_stream_.w_slice());
+            if (!ret) {
+                co_return unexpected{ret.error()};
+            }
+            // if (ret.value() == 0) {
+            //     break;
+            // }
+            r_stream_.w_increase(ret.value());
+        }
+
+        co_return buf.size();
+    }
+
+    [[REMEMBER_CO_AWAIT]]
     auto write(std::span<const char> buf) -> Task<Result<std::size_t>> {
         if (w_stream_.w_remaining() >= static_cast<int>(buf.size())) {
             co_return w_stream_.read_from(buf);
