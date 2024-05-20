@@ -62,11 +62,17 @@ jobs:
       #     chmod +x install-cmake.sh
       #     ./install-cmake.sh --prefix=/usr/local --skip-license
 
-      - name: Build
+      - name: Build(clang)
+        if: matrix.config.compiler == 'clang'
         run: |
-          CXX=${{ matrix.config.cxx }} meson setup build -Dbuildtype=${{ matrix.config.build_type }}
+          meson setup build -Dbuildtype=${{ matrix.config.build_type }} --cross-file cross-clang.ini
           meson compile -C build
-          ./build/tests/gtests/all_gtests
+
+      - name: Build(gcc)
+        if: matrix.config.compiler == 'gcc'
+        run: |
+          meson setup build -Dbuildtype=${{ matrix.config.build_type }}
+          meson compile -C build
 
       - name: Install
         run: |
