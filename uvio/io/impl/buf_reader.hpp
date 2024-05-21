@@ -4,7 +4,7 @@
 #include "uvio/coroutine/task.hpp"
 #include "uvio/macros.hpp"
 
-namespace uvio::io {
+namespace uvio::io::detail {
 
 template <typename Derived>
 class ImplBufRead {
@@ -134,4 +134,4 @@ public:
         return read_until(buf, "\n");
     }
 };
-} // namespace uvio::io
+} // namespace uvio::io::detail
