@@ -16,6 +16,7 @@ all_tests_sources = [
   'test_dns.cpp',
   'test_buffered.cpp',
   'test_buffered2.cpp',
+  'test_coredump.cpp',
 ]
 
 foreach source: all_tests_sources
