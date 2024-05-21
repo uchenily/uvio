@@ -62,10 +62,13 @@ public:
     }
 
     ~TcpListener() {
-        uv_close(reinterpret_cast<uv_handle_t *>(&listen_socket_),
-                 [](uv_handle_t *handle) {
-                     (void) handle;
-                 });
+        if (!static_cast<bool>(uv_is_closing(
+                reinterpret_cast<uv_handle_t *>(&listen_socket_)))) {
+            uv_close(reinterpret_cast<uv_handle_t *>(&listen_socket_),
+                     [](uv_handle_t *handle) {
+                         (void) handle;
+                     });
+        }
     }
 
 public:
