@@ -9,7 +9,7 @@ template <class IO, int WBUF_SIZE>
     requires requires(IO io, std::span<const char> buf) {
         { io.write(buf) };
     }
-class BufWriter : public detail::ImplBufWrite<IO> {
+class BufWriter : public detail::ImplBufWrite<BufWriter<IO, WBUF_SIZE>> {
     friend class detail::ImplBufWrite<BufWriter<IO, WBUF_SIZE>>;
 
 public:

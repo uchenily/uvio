@@ -10,7 +10,7 @@ template <typename IO, int RBUF_SIZE>
     requires requires(IO io, std::span<char> buf) {
         { io.read(buf) };
     }
-class BufReader : public detail::ImplBufRead<IO> {
+class BufReader : public detail::ImplBufRead<BufReader<IO, RBUF_SIZE>> {
     friend class detail::ImplBufRead<BufReader<IO, RBUF_SIZE>>;
 
 public:
