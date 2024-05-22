@@ -16,6 +16,10 @@ public:
         return stream_->read(buf);
     }
 
+    auto read_exact(std::span<char> buf) {
+        return stream_->read_exact(buf);
+    }
+
 private:
     std::shared_ptr<IO> stream_;
 };
