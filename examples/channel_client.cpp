@@ -18,7 +18,7 @@ auto process(TcpStream &&stream) -> Task<> {
 
     for (auto i = 0u; i < 64; i++) {
         co_await channel.Send(std::format("client message round {}", i));
-        auto message = co_await channel.Recv();
+        auto message = (co_await channel.Recv()).value();
         console.info("Received: `{}`", message);
     }
     // co_await channel.Close();

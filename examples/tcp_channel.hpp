@@ -23,12 +23,12 @@ public:
 
 public:
     [[REMEMBER_CO_AWAIT]]
-    auto Send(std::span<const char> message) -> Task<void> {
-        co_await codec_.Encode(message, buffered_writer_);
+    auto Send(std::span<const char> message) -> Task<Result<void>> {
+        co_return co_await codec_.Encode(message, buffered_writer_);
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto Recv() -> Task<std::string> {
+    auto Recv() -> Task<Result<std::string>> {
         co_return co_await codec_.Decode(buffered_reader_);
     }
 
