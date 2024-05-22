@@ -29,26 +29,50 @@ using namespace uvio::io;
 //     }
 // }
 
+// auto process(TcpStream stream) -> Task<> {
+//     // BufStream<TcpStream, 1, 1> buffered_stream(std::move(stream));
+//     BufStream<TcpStream, 1024, 1024> buffered_stream(std::move(stream));
+//     while (true) {
+//         std::string buf;
+//
+//         auto rret = co_await buffered_stream.read_until(buf, "XXX");
+//         if (!rret) {
+//             console.error(rret.error().message());
+//             break;
+//         }
+//
+//         console.info("Received: `{}`", buf.data());
+//         auto wret = co_await buffered_stream.write(buf);
+//         if (!wret) {
+//             console.error(wret.error().message());
+//             break;
+//         }
+//
+//         co_await buffered_stream.flush();
+//     }
+// }
+
 auto process(TcpStream stream) -> Task<> {
-    // BufStream<TcpStream, 1, 1> buffered_stream(std::move(stream));
-    BufStream<TcpStream, 1024, 1024> buffered_stream(std::move(stream));
+    auto [reader, writer] = stream.into_split<1024, 1024>();
+    OwnedReadHalf<TcpStream, 1024>  buffered_reader(std::move(reader));
+    OwnedWriteHalf<TcpStream, 1024> buffered_writer(std::move(writer));
     while (true) {
         std::string buf;
 
-        auto rret = co_await buffered_stream.read_until(buf, "XXX");
+        auto rret = co_await buffered_reader.read_until(buf, "XXX");
         if (!rret) {
             console.error(rret.error().message());
             break;
         }
 
         console.info("Received: `{}`", buf.data());
-        auto wret = co_await buffered_stream.write(buf);
+        auto wret = co_await buffered_writer.write(buf);
         if (!wret) {
             console.error(wret.error().message());
             break;
         }
 
-        co_await buffered_stream.flush();
+        co_await buffered_writer.flush();
     }
 }
 

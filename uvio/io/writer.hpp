@@ -10,6 +10,8 @@ template <class IO, int WBUF_SIZE>
         { io.write(buf) };
     }
 class BufWriter : public detail::ImplBufWrite<IO> {
+    friend class detail::ImplBufWrite<BufWriter<IO, WBUF_SIZE>>;
+
 public:
     BufWriter(IO &&io)
         : io_{std::move(io)} {}

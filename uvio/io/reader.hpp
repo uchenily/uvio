@@ -11,6 +11,8 @@ template <typename IO, int RBUF_SIZE>
         { io.read(buf) };
     }
 class BufReader : public detail::ImplBufRead<IO> {
+    friend class detail::ImplBufRead<BufReader<IO, RBUF_SIZE>>;
+
 public:
     BufReader(IO &&io)
         : io_{std::move(io)} {}

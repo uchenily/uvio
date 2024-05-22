@@ -3,6 +3,7 @@
 #include "uvio/common/result.hpp"
 #include "uvio/coroutine/task.hpp"
 #include "uvio/debug.hpp"
+#include "uvio/io/split.hpp"
 #include "uvio/log.hpp"
 #include "uvio/macros.hpp"
 
@@ -260,6 +261,16 @@ public:
             }
         };
         return ConnectAwaiter{addr, port};
+    }
+
+    template <int RBUF_SIZE, int WBUF_SIZE>
+    [[nodiscard]]
+    auto into_split() noexcept
+        -> std::pair<io::OwnedReadHalf<TcpStream, RBUF_SIZE>,
+                     io::OwnedWriteHalf<TcpStream, WBUF_SIZE>> {
+        auto stream = std::make_shared<TcpStream>(std::move(tcp_handle_));
+        return std::make_pair(io::OwnedReadHalf<TcpStream, RBUF_SIZE>{stream},
+                              io::OwnedWriteHalf<TcpStream, RBUF_SIZE>{stream});
     }
 };
 
