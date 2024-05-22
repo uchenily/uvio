@@ -2,6 +2,9 @@
 #include "uvio/io.hpp"
 #include "uvio/net.hpp"
 
+#include "uvio/net/tcp_reader.hpp"
+#include "uvio/net/tcp_writer.hpp"
+
 using namespace uvio;
 using namespace uvio::net;
 using namespace uvio::io;
@@ -53,9 +56,11 @@ using namespace uvio::io;
 // }
 
 auto process(TcpStream stream) -> Task<> {
-    auto [reader, writer] = stream.into_split<1024, 1024>();
-    OwnedReadHalf<TcpStream, 1024>  buffered_reader(std::move(reader));
-    OwnedWriteHalf<TcpStream, 1024> buffered_writer(std::move(writer));
+    auto [reader, writer] = stream.into_split();
+    TcpBufReader<OwnedReadHalf<TcpStream>, 1024> buffered_reader(
+        std::move(reader));
+    TcpBufWriter<OwnedWriteHalf<TcpStream>, 1024> buffered_writer(
+        std::move(writer));
     while (true) {
         std::string buf;
 

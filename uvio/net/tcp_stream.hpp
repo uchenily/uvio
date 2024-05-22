@@ -263,14 +263,12 @@ public:
         return ConnectAwaiter{addr, port};
     }
 
-    template <int RBUF_SIZE, int WBUF_SIZE>
     [[nodiscard]]
-    auto into_split() noexcept
-        -> std::pair<io::OwnedReadHalf<TcpStream, RBUF_SIZE>,
-                     io::OwnedWriteHalf<TcpStream, WBUF_SIZE>> {
+    auto into_split() noexcept -> std::pair<io::OwnedReadHalf<TcpStream>,
+                                            io::OwnedWriteHalf<TcpStream>> {
         auto stream = std::make_shared<TcpStream>(std::move(tcp_handle_));
-        return std::make_pair(io::OwnedReadHalf<TcpStream, RBUF_SIZE>{stream},
-                              io::OwnedWriteHalf<TcpStream, RBUF_SIZE>{stream});
+        return std::make_pair(io::OwnedReadHalf<TcpStream>{stream},
+                              io::OwnedWriteHalf<TcpStream>{stream});
     }
 };
 
