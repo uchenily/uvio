@@ -1,10 +1,9 @@
 #pragma once
 
+#include "uvio/common/result.hpp"
 #include "uvio/core.hpp"
 
 namespace uvio::codec {
-
-using namespace uvio;
 
 template <typename Derived, typename Reader, typename Writer>
 class Codec {
@@ -23,24 +22,29 @@ public:
 template <typename Reader, typename Writer>
 class LengthDelimitedCodec
     : public Codec<LengthDelimitedCodec<Reader, Writer>, Reader, Writer> {
-private:
-    friend class Codec<LengthDelimitedCodec<Reader, Writer>, Reader, Writer>;
+public:
+    // friend class Codec<LengthDelimitedCodec<Reader, Writer>, Reader, Writer>;
 
     auto decode(Reader &reader) -> Task<Result<std::string>> {
-        std::array<unsigned char, 4> msg_len{};
+        // std::array<unsigned char, 4> msg_len{};
+        //
+        // auto ret = co_await reader.read_exact(
+        //     {reinterpret_cast<char *>(msg_len.data()), msg_len.size()});
+        // if (!ret) {
+        //     co_return unexpected{ret.error()};
+        // }
+        //
+        // auto length = msg_len[0] << 24 | msg_len[1] << 16 | msg_len[2] << 8
+        //               | msg_len[3];
 
-        auto ret = co_await reader.read_exact(
-            {reinterpret_cast<char *>(msg_len.data()), msg_len.size()});
-        if (!ret) {
-            co_return unexpected{ret.error()};
+        auto has_length = co_await decode_length(reader);
+        if (!has_length) {
+            co_return unexpected{has_length.error()};
         }
-
-        auto length = msg_len[0] << 24 | msg_len[1] << 16 | msg_len[2] << 8
-                      | msg_len[3];
+        auto length = has_length.value();
 
         std::string message(length, 0);
-        ret = co_await reader.read_exact(message);
-        if (!ret) {
+        if (auto ret = co_await reader.read_exact(message); !ret) {
             co_return unexpected{ret.error()};
         }
         co_return message;
@@ -48,27 +52,66 @@ private:
 
     auto encode(const std::span<const char> message, Writer &writer)
         -> Task<Result<void>> {
-        std::array<unsigned char, 4> msg_len{};
-        uint32_t                     length = message.size();
+        // std::array<unsigned char, 4> msg_len{};
+        // uint64_t                     length = message.size();
+        //
+        // msg_len[3] = length & 0xFF;
+        // msg_len[2] = (length >> 8) & 0xFF;
+        // msg_len[1] = (length >> 16) & 0xFF;
+        // msg_len[0] = (length >> 24) & 0xFF;
+        //
+        // auto ret = co_await writer.write(
+        //     {reinterpret_cast<char *>(msg_len.data()), msg_len.size()});
+        // if (!ret) {
+        //     co_return unexpected{ret.error()};
+        // }
 
-        msg_len[3] = length & 0xFF;
-        msg_len[2] = (length >> 8) & 0xFF;
-        msg_len[1] = (length >> 16) & 0xFF;
-        msg_len[0] = (length >> 24) & 0xFF;
-
-        auto ret = co_await writer.write(
-            {reinterpret_cast<char *>(msg_len.data()), msg_len.size()});
-        if (!ret) {
-            co_return unexpected{ret.error()};
+        uint64_t length = message.size();
+        if (auto ret = co_await encode_length(length, writer); !ret) {
+            co_return ret;
         }
-
-        ret = co_await writer.write(message);
-        if (!ret) {
+        if (auto ret = co_await writer.write(message); !ret) {
             co_return unexpected{ret.error()};
         }
         if (auto ret = co_await writer.flush(); !ret) {
             co_return ret;
         }
+        co_return Result<void>{};
+    }
+
+private:
+    auto decode_length(Reader &reader) -> Task<Result<uint64_t>> {
+        // Maximum number of bytes required to encode an uint64_t (7 * 10 > 64)
+        static constexpr int max_varint_bytes = 10;
+
+        std::array<char, 1> bytes{};
+        uint64_t            value{};
+        for (int i = 0; i < max_varint_bytes; ++i) {
+            auto ret = co_await reader.read_exact(bytes);
+            if (!ret) {
+                co_return unexpected{ret.error()};
+            }
+            value |= static_cast<uint64_t>(bytes[0] & 0x7F) << (i * 7);
+            if ((bytes[0] & 0x80) == 0) {
+                co_return value;
+            }
+        }
+        co_return unexpected{make_uvio_error(Error::Unclassified)};
+    }
+
+    auto encode_length(uint64_t value, Writer &writer) -> Task<Result<void>> {
+        // Encodes value in varint format and writes the result by writer
+        std::array<char, 1> bytes;
+        do {
+            bytes[0] = (value & 0x7F) | (((value >> 7) == 0) ? 0x00 : 0x80);
+            if (auto ret = co_await writer.write(bytes); !ret) {
+                co_return unexpected{ret.error()};
+            }
+            value >>= 7;
+        } while (value != 0);
+        // if (auto ret = co_await writer.flush(); !ret) {
+        //     co_return ret;
+        // }
         co_return Result<void>{};
     }
 };
