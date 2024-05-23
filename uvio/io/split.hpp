@@ -12,11 +12,11 @@ public:
         : stream_{std::move(stream)} {}
 
 public:
-    auto read(std::span<char> buf) {
+    auto read(std::span<char> buf) noexcept {
         return stream_->read(buf);
     }
 
-    auto read_exact(std::span<char> buf) {
+    auto read_exact(std::span<char> buf) noexcept {
         return stream_->read_exact(buf);
     }
 
@@ -31,7 +31,7 @@ public:
         : stream_{std::move(stream)} {}
 
 public:
-    auto write(std::span<const char> buf) {
+    auto write(std::span<const char> buf) noexcept {
         return stream_->write(buf);
     }
 

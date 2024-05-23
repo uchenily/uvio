@@ -10,7 +10,7 @@ template <typename Derived>
 class ImplBufRead {
 public:
     [[REMEMBER_CO_AWAIT]]
-    auto read(std::span<char> buf) -> Task<Result<std::size_t>> {
+    auto read(std::span<char> buf) noexcept -> Task<Result<std::size_t>> {
         // When buf is large enough, it's not necessory for additional copy from
         // StreamBuffer to buf
         if (static_cast<Derived *>(this)->r_stream_.capacity()
@@ -53,7 +53,7 @@ public:
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto read_exact(std::span<char> buf) -> Task<Result<void>> {
+    auto read_exact(std::span<char> buf) noexcept -> Task<Result<void>> {
         if (static_cast<Derived *>(this)->r_stream_.capacity()
             < buf.size_bytes()) {
             auto len = static_cast<Derived *>(this)->r_stream_.write_to(buf);
@@ -96,7 +96,7 @@ public:
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto read_until(std::string &buf, std::string_view end_flag)
+    auto read_until(std::string &buf, std::string_view end_flag) noexcept
         -> Task<Result<std::size_t>> {
         Result<std::size_t> ret;
         while (true) {
@@ -130,7 +130,7 @@ public:
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto read_line(std::string &buf) -> Task<Result<std::size_t>> {
+    auto read_line(std::string &buf) noexcept -> Task<Result<std::size_t>> {
         return read_until(buf, "\n");
     }
 };

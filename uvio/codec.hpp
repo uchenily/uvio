@@ -37,7 +37,7 @@ public:
         co_return message;
     }
 
-    auto encode(const std::span<const char> message, Writer &writer)
+    auto encode(std::span<const char> message, Writer &writer)
         -> Task<Result<void>> {
         uint32_t length = message.size();
         if (auto ret = co_await encode_length(length, writer); !ret) {
@@ -114,7 +114,7 @@ public:
         co_return message;
     }
 
-    auto encode(const std::span<const char> message, Writer &writer)
+    auto encode(std::span<const char> message, Writer &writer)
         -> Task<Result<void>> {
         // std::array<unsigned char, 4> msg_len{};
         // uint64_t                     length = message.size();

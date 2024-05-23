@@ -10,7 +10,8 @@ template <typename Derived>
 class ImplBufWrite {
 public:
     [[REMEMBER_CO_AWAIT]]
-    auto write(std::span<const char> buf) -> Task<Result<std::size_t>> {
+    auto write(std::span<const char> buf) noexcept
+        -> Task<Result<std::size_t>> {
         if (static_cast<Derived *>(this)->w_stream_.w_remaining()
             >= static_cast<int>(buf.size())) {
             co_return static_cast<Derived *>(this)->w_stream_.read_from(buf);
@@ -47,7 +48,7 @@ public:
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto flush() -> Task<Result<void>> {
+    auto flush() noexcept -> Task<Result<void>> {
         while (!static_cast<Derived *>(this)->w_stream_.r_slice().empty()) {
             auto ret = co_await static_cast<Derived *>(this)->io_.write(
                 static_cast<Derived *>(this)->w_stream_.r_slice());
@@ -63,7 +64,7 @@ public:
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto write_all(std::span<const char> buf) -> Task<Result<void>> {
+    auto write_all(std::span<const char> buf) noexcept -> Task<Result<void>> {
         if (auto ret = co_await write(buf); !ret) {
             co_return unexpected{ret.error()};
         }
