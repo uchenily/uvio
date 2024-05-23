@@ -43,7 +43,8 @@ public:
 private:
     BufferedReader buffered_reader_{io::OwnedReadHalf<TcpStream>{nullptr}};
     BufferedWriter buffered_writer_{io::OwnedWriteHalf<TcpStream>{nullptr}};
-    LengthDelimitedCodec<BufferedReader, BufferedWriter> codec_{};
+    // LengthDelimitedCodec<BufferedReader, BufferedWriter> codec_{};
+    FixedLength32Codec<BufferedReader, BufferedWriter> codec_{};
 };
 
 } // namespace example
