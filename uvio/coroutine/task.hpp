@@ -52,7 +52,7 @@ namespace detail {
     template <typename T>
     class TaskPromise final : public TaskPromiseBase {
     public:
-        auto get_return_object() noexcept -> Task<T>;
+        inline auto get_return_object() noexcept -> Task<T>;
 
         template <typename F>
         auto return_value(F &&value) noexcept {
@@ -71,7 +71,7 @@ namespace detail {
     template <>
     class TaskPromise<void> final : public TaskPromiseBase {
     public:
-        auto get_return_object() noexcept -> Task<void>;
+        inline auto get_return_object() noexcept -> Task<void>;
 
         auto return_void() const noexcept {}
 
