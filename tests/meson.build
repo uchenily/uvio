@@ -19,6 +19,10 @@ all_tests_sources = [
   'test_coredump.cpp',
 ]
 
+# or
+# all_tests_sources = run_command('bash', '-c', 'find . -type f -name "*.cpp" -maxdepth 1 -printf "%P\n" | sort', check: true).stdout().strip().split('\n')
+message('all_tests_sources:', all_tests_sources)
+
 foreach source: all_tests_sources
   executable(source.replace('.cpp', ''), source,
     include_directories: includes,
