@@ -247,5 +247,5 @@ namespace detail {
 
 } // namespace detail
 
-static inline auto console = detail::ConsoleLogger();
+inline auto console = detail::ConsoleLogger();
 } // namespace uvio::log

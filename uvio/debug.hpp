@@ -4,7 +4,7 @@
 
 #include "uv.h"
 
-static inline auto &debug_logger = uvio::log::console;
+inline auto &debug_logger = uvio::log::console;
 
 #if !defined(NDEBUG)
 
