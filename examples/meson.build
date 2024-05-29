@@ -14,6 +14,7 @@ endforeach
 
 curl_examples_sources = [
   'example_curl.cpp',
+  'coro_curl.cpp',
 ]
 # curl_dep = dependency('libcurl')
 curl_dep = cpp.find_library('curl', required: false)
