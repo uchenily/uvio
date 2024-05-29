@@ -7,7 +7,7 @@
 #include <curl/easy.h>
 #include <curl/multi.h>
 
-uv_timer_t timeout;
+uv_timer_t timer;
 CURLM     *multi_handle;
 
 using curl_context_t = struct curl_context_s {
@@ -70,7 +70,7 @@ void check_multi_info() {
 }
 
 void curl_poll_cb(uv_poll_t *req, int status, int events) {
-    uv_timer_stop(&timeout);
+    uv_timer_stop(&timer);
     int running_handles = 0;
     int flags = 0;
     if (status < 0) {
@@ -83,7 +83,7 @@ void curl_poll_cb(uv_poll_t *req, int status, int events) {
         flags |= CURL_CSELECT_OUT;
     }
 
-    auto context = reinterpret_cast<curl_context_t *>(req);
+    auto context = static_cast<curl_context_t *>(req->data);
 
     curl_multi_socket_action(multi_handle,
                              context->curl_sockfd,
@@ -102,10 +102,11 @@ void timer_cb(uv_timer_t * /*req*/) {
 }
 
 void curl_timer_cb(CURLM * /*multi*/, int64_t timeout_ms, void * /*userp*/) {
+    LOG_DEBUG("curl_timer_cb()");
     if (timeout_ms <= 0) {
         timeout_ms = 1;
     }
-    uv_timer_start(&timeout, timer_cb, timeout_ms, 0);
+    uv_timer_start(&timer, timer_cb, timeout_ms, 0);
 }
 
 // curl socketfd (readable/writable) -> curl_socket_cb() -> uv_poll_start() ->
@@ -158,7 +159,7 @@ auto main(int argc, char **argv) -> int {
         return 1;
     }
 
-    uv_timer_init(uv_default_loop(), &timeout);
+    uv_timer_init(uv_default_loop(), &timer);
 
     multi_handle = curl_multi_init();
     curl_multi_setopt(multi_handle, CURLMOPT_SOCKETFUNCTION, curl_socket_cb);
