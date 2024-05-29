@@ -27,14 +27,13 @@ auto process(TcpStream stream) -> Task<> {
     while (true) {
         std::array<char, 1024> buf{};
 
-        auto rret = co_await stream.read(buf);
-        if (!rret) {
+        if (auto ret = co_await stream.read(buf); !ret) {
+            console.error(ret.error().message());
             break;
         }
-
         console.info("Received: `{}`", buf.data());
-        auto wret = co_await stream.write(buf);
-        if (!wret) {
+        if (auto ret = co_await stream.write(buf); !ret) {
+            console.error(ret.error().message());
             break;
         }
     }
