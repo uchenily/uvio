@@ -1,0 +1,10 @@
+[wrap-file]
+directory = llhttp-release-v9.2.1
+source_url = https://github.com/nodejs/llhttp/archive/refs/tags/release/v9.2.1.tar.gz
+source_filename = llhttp-9.2.1.tar.gz
+source_hash = 3c163891446e529604b590f9ad097b2e98b5ef7e4d3ddcf1cf98b62ca668f23e
+patch_directory = llhttp
+# diff_files = llhttp/libllhttp.patch
+
+[provide]
+llhttp = llhttp_dep

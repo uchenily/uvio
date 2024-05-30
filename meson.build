@@ -14,8 +14,11 @@ includes = include_directories('.')
 cpp = meson.get_compiler('cpp')
 libuv_dep = dependency('libuv')
 libbfd_dep = cpp.find_library('bfd', required: false)
+llhttp_dep = dependency('llhttp')
+
 dependencies = []
 dependencies += libuv_dep
+dependencies += llhttp_dep
 
 if libbfd_dep.found()
   dependencies += libbfd_dep

@@ -17,6 +17,7 @@ all_tests_sources = [
   'test_buffered.cpp',
   'test_buffered2.cpp',
   'test_coredump.cpp',
+  'test_llhttp.cpp',
 ]
 
 # or
