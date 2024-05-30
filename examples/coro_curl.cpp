@@ -1,10 +1,7 @@
-#include "uv.h"
-#include "uvio/common/backtrace.hpp"
 #include "uvio/core.hpp"
 #include "uvio/log.hpp"
 #include "uvio/net.hpp"
 #include "uvio/net/http/http_client.hpp"
-#include "uvio/time.hpp"
 
 using namespace uvio;
 using namespace uvio::log;
