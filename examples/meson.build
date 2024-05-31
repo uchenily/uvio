@@ -2,6 +2,7 @@ all_examples_sources = [
   'echo_server.cpp',
   'channel_server.cpp',
   'channel_client.cpp',
+  'http_server.cpp',
 ]
 
 foreach source: all_examples_sources

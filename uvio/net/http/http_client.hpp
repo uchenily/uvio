@@ -3,6 +3,7 @@
 #include "uvio/common/result.hpp"
 #include "uvio/debug.hpp"
 #include "uvio/macros.hpp"
+#include "uvio/net/http/http_protocol.hpp"
 
 #include <coroutine>
 
@@ -11,16 +12,6 @@
 #include "uv.h"
 
 namespace uvio::net::http {
-
-struct HttpRequest {
-    std::string method{"GET"};
-    std::string url;
-};
-
-struct HttpResponse {
-    int         http_code;
-    std::string body;
-};
 
 class HttpClient {
     struct Context {
