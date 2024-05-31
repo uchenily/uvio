@@ -1,7 +1,7 @@
 #include "uvio/core.hpp"
 #include "uvio/log.hpp"
 #include "uvio/net.hpp"
-#include "uvio/net/http/http_client.hpp"
+#include "uvio/net/http.hpp"
 
 using namespace uvio;
 using namespace uvio::log;
