@@ -1,12 +1,15 @@
 .cache
 temp
 build
+build-cmake/
 a.out
 *.so
 *.pb.*
 __pycache__
+.gdb_history
 misc/*.sh
 misc/*.md
 subprojects/*
 !subprojects/packagefiles/
 !subprojects/*.wrap
+test.*
