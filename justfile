@@ -25,9 +25,21 @@ build-gcc:
 setup-gcc:
     meson setup --reconfigure build-gcc
 
+# setup cmake build env
+setup-cmake:
+    cmake -B build-cmake -G Ninja
+
+# use cmake to build
+build-cmake:
+    cmake --build build-cmake
+
 # run a specific test
+run TARGET:
+    meson test -C build {{TARGET}}
+
+# test a specific test
 test TEST:
-    ./build/tests/{{TEST}}
+    meson test -C build {{TEST}} --verbose
 
 # run pre-commit
 pre-commit:
