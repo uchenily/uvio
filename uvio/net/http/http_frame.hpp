@@ -2,6 +2,7 @@
 
 #include "uvio/codec.hpp"
 #include "uvio/common/expected.hpp"
+#include "uvio/common/result.hpp"
 #include "uvio/core.hpp"
 #include "uvio/debug.hpp"
 #include "uvio/net.hpp"
@@ -20,11 +21,21 @@ template <typename Reader, typename Writer>
 class HttpCodec : public Codec<HttpCodec<Reader, Writer>, Reader, Writer> {
 public:
     auto decode(Reader &reader) -> Task<Result<std::string>> {
-        std::string message;
-        if (auto ret = co_await reader.read_until(message, "\r\n"); !ret) {
+        HttpRequest req;
+        std::string request_line;
+        if (auto ret = co_await reader.read_until(request_line, "\r\n"); !ret) {
             co_return unexpected{ret.error()};
         }
-        LOG_DEBUG("{}", message);
+        LOG_DEBUG("{}", request_line);
+        // GET / HTTP/1.1
+        auto ret = parse_request_line(request_line);
+        if (!ret) {
+            co_return unexpected{ret.error()};
+        }
+        auto [method, uri, version] = ret.value();
+        LOG_DEBUG("method: {}", method);
+        LOG_DEBUG("uri: {}", uri);
+        LOG_DEBUG("version: {}", version);
 
         std::string message2;
         if (auto ret = co_await reader.read_until(message2, "\r\n\r\n"); !ret) {
@@ -56,6 +67,45 @@ public:
         }
 
         co_return Result<void>{};
+    }
+
+    auto parse_request_line(std::string_view line) -> Result<
+        std::tuple<std::string_view, std::string_view, std::string_view>> {
+        std::vector<std::string_view> parts;
+
+        std::size_t start = 0;
+        std::size_t end = 0;
+
+        // first space
+        while (end < line.size() && line[end] != ' ') {
+            ++end;
+        }
+        if (line[end] != ' ') {
+            return unexpected{make_uvio_error(Error::Unclassified)};
+        }
+        parts.emplace_back(line.data() + start, end - start);
+        start = ++end;
+
+        // second space
+        while (end < line.size() && line[end] != ' ') {
+            ++end;
+        }
+        if (line[end] != ' ') {
+            return unexpected{make_uvio_error(Error::Unclassified)};
+        }
+        parts.emplace_back(line.data() + start, end - start);
+        start = ++end;
+
+        // HTTP version
+        while (end < line.size() && line[end] != '\r' && line[end] != '\n') {
+            ++end;
+        }
+        if (line[end] != '\r' && line[end] != '\n') {
+            return unexpected{make_uvio_error(Error::Unclassified)};
+        }
+        parts.emplace_back(line.data() + start, end - start);
+
+        return std::tuple{parts[0], parts[1], parts[2]};
     }
 };
 
