@@ -7,6 +7,7 @@
 #include "uvio/debug.hpp"
 #include "uvio/net.hpp"
 #include "uvio/net/http/http_protocol.hpp"
+#include "uvio/net/http/http_util.hpp"
 
 namespace uvio::net::http {
 
@@ -37,19 +38,29 @@ public:
         LOG_DEBUG("uri: {}", uri);
         LOG_DEBUG("version: {}", version);
 
-        std::string message2;
-        if (auto ret = co_await reader.read_until(message2, "\r\n\r\n"); !ret) {
+        std::string request_headers;
+        if (auto ret = co_await reader.read_until(request_headers, "\r\n\r\n");
+            !ret) {
             co_return unexpected{ret.error()};
         }
-        LOG_DEBUG("{}", message2);
+        LOG_DEBUG("{}", request_headers);
+        // Host: xxx
+        // Content-Type: application/html
+        auto headers = parse_headers(request_headers);
 
-        // std::string message3;
-        // if (auto ret = co_await reader.read(message3); !ret) {
-        //     co_return unexpected{ret.error()};
-        // }
-        // LOG_DEBUG("{}", message3);
+        std::string body;
 
-        co_return "fake";
+        if (auto has_length = headers.find("Content-Length")) {
+            auto length = std::stoi(has_length.value());
+            LOG_DEBUG("Parsed body length: {}", length);
+            body.resize(length);
+            if (auto ret = co_await reader.read_exact(body); !ret) {
+                co_return unexpected{ret.error()};
+            }
+            LOG_DEBUG("body: `{}`", body);
+        }
+
+        co_return body;
     }
 
     auto encode(std::span<const char> message, Writer &writer)
@@ -106,6 +117,57 @@ public:
         parts.emplace_back(line.data() + start, end - start);
 
         return std::tuple{parts[0], parts[1], parts[2]};
+    }
+
+    auto trim(std::string_view str) -> std::string_view {
+        std::size_t start = 0;
+        std::size_t end = str.size();
+
+        while (start < end && std::isspace(str[start]) != 0) {
+            ++start;
+        }
+        while (end > start && std::isspace(str[end - 1]) != 0) {
+            --end;
+        }
+
+        return str.substr(start, end - start);
+    }
+
+    auto parse_headers(std::string_view headers) -> HttpHeader {
+        HttpHeader  header;
+        std::size_t start = 0;
+        std::size_t end = 0;
+        while (end < headers.size()) {
+            while (end < headers.size() && headers[end] != '\r'
+                   && headers[end] != '\n') {
+                ++end;
+            }
+
+            // get key-value pair
+            auto colon_pos = headers.find(':', start);
+            if (colon_pos != std::string_view::npos) {
+                auto key = headers.substr(start, colon_pos - start);
+                auto value = headers.substr(colon_pos + 1, end - colon_pos - 1);
+                key = trim(key);
+                value = trim(value);
+                header.add(std::string{key}, std::string{value});
+            }
+
+            // skip next "\r\n"
+            while (end < headers.size()
+                   && (headers[end] == '\r' || headers[end] == '\n')) {
+                ++end;
+            }
+            // if (end + 1 < headers.size() && headers[end] == '\r'
+            //     && headers[end + 1] == '\n') {
+            //     end += 2;
+            // } else {
+            //     ++end;
+            // }
+
+            start = end;
+        }
+        return header;
     }
 };
 
