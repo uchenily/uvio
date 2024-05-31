@@ -15,6 +15,10 @@ cpp = meson.get_compiler('cpp')
 libuv_dep = dependency('libuv')
 libbfd_dep = cpp.find_library('bfd', required: false)
 llhttp_dep = dependency('llhttp')
+curl_dep = cpp.find_library('curl', required: false)
+if curl_dep.found()
+  compile_args += '-DHAS_CURL'
+endif
 
 dependencies = []
 dependencies += libuv_dep

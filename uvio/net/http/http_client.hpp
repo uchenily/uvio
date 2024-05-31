@@ -1,4 +1,5 @@
 #pragma once
+#if defined(HAS_CURL)
 
 #include "uvio/common/result.hpp"
 #include "uvio/debug.hpp"
@@ -231,3 +232,4 @@ private:
     static inline bool curl_inited_{false};
 };
 } // namespace uvio::net::http
+#endif
