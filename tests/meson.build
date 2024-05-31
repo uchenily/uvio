@@ -25,10 +25,14 @@ all_tests_sources = [
 message('all_tests_sources:', all_tests_sources)
 
 foreach source: all_tests_sources
-  executable(source.replace('.cpp', ''), source,
+  target_name = source.replace('.cpp', '')
+  exe = executable(target_name, source,
     include_directories: includes,
     cpp_args: compile_args,
     dependencies: dependencies)
+
+  test_name = target_name.replace('test_', '')
+  test(test_name, exe)
 endforeach
 
 subdir('gtests')

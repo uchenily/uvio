@@ -5,11 +5,13 @@ all_examples_sources = [
 ]
 
 foreach source: all_examples_sources
-  target = source.replace('.cpp', '')
-  target = executable(target, source,
+  target_name = source.replace('.cpp', '')
+  target = executable(target_name, source,
     include_directories: includes,
     cpp_args: compile_args,
     dependencies: dependencies)
+
+  test(target_name, target)
 endforeach
 
 curl_examples_sources = [
@@ -20,10 +22,12 @@ curl_examples_sources = [
 curl_dep = cpp.find_library('curl', required: false)
 if curl_dep.found()
   foreach source: curl_examples_sources
-    target = source.replace('.cpp', '')
-    target = executable(target, source,
+    target_name = source.replace('.cpp', '')
+    target = executable(target_name, source,
       include_directories: includes,
       cpp_args: compile_args,
       dependencies: dependencies + curl_dep)
+
+  test(target_name, target)
   endforeach
 endif
