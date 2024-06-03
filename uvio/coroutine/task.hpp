@@ -94,6 +94,21 @@ public:
         }
     }
 
+    Task(Task &&other) noexcept
+        : handle_{std::move(other.handle_)} {
+        other.handle_ = nullptr;
+    }
+    auto operator=(Task &&other) noexcept -> Task & {
+        if (std::addressof(other) != this) {
+            handle_ = std::move(other.handle_);
+            other.handle_ = nullptr;
+        }
+        return *this;
+    }
+
+    Task(const Task &) = delete;
+    auto operator=(const Task &) -> Task & = delete;
+
 public:
     auto operator co_await() const & noexcept {
         struct Awaitable {
