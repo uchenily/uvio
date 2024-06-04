@@ -15,8 +15,8 @@ using namespace uvio;
 using namespace uvio::net;
 using namespace uvio::codec;
 
-using BufferedReader = TcpReader<1024>;
-using BufferedWriter = TcpWriter<1024>;
+using BufferedReader = TcpReader;
+using BufferedWriter = TcpWriter;
 
 class HttpCodec : public Codec<HttpCodec> {
 public:
@@ -176,8 +176,8 @@ class HttpFramed {
 public:
     explicit HttpFramed(TcpStream &&stream) {
         auto [reader, writer] = std::move(stream).into_split();
-        buffered_reader_ = std::move(reader);
-        buffered_writer_ = std::move(writer);
+        buffered_reader_ = BufferedReader{std::move(reader), 1024};
+        buffered_writer_ = BufferedWriter{std::move(writer), 1024};
     }
 
 public:
@@ -194,8 +194,10 @@ public:
     }
 
 private:
-    BufferedReader buffered_reader_{io::OwnedReadHalf<TcpStream>{nullptr}};
-    BufferedWriter buffered_writer_{io::OwnedWriteHalf<TcpStream>{nullptr}};
+    BufferedReader buffered_reader_{io::OwnedReadHalf<TcpStream>{nullptr},
+                                    1024};
+    BufferedWriter buffered_writer_{io::OwnedWriteHalf<TcpStream>{nullptr},
+                                    1024};
     HttpCodec      codec_{};
 };
 } // namespace uvio::net::http

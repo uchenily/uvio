@@ -54,8 +54,8 @@ using namespace uvio::io;
 
 auto process(TcpStream stream) -> Task<> {
     auto [reader, writer] = stream.into_split();
-    TcpReader<1024> buffered_reader(std::move(reader));
-    TcpWriter<1024> buffered_writer(std::move(writer));
+    TcpReader buffered_reader(std::move(reader), 1024);
+    TcpWriter buffered_writer(std::move(writer), 1024);
     while (true) {
         std::string buf;
 

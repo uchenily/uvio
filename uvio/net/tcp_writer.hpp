@@ -5,7 +5,6 @@
 
 namespace uvio::net {
 
-template <int WBUF_SIZE>
-using TcpWriter = io::BufWriter<io::OwnedWriteHalf<TcpStream>, WBUF_SIZE>;
+using TcpWriter = io::BufWriter<io::OwnedWriteHalf<TcpStream>>;
 
 } // namespace uvio::net

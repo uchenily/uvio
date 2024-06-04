@@ -6,7 +6,6 @@
 
 namespace uvio::net {
 
-template <int RBUF_SIZE>
-using TcpReader = io::BufReader<io::OwnedReadHalf<TcpStream>, RBUF_SIZE>;
+using TcpReader = io::BufReader<io::OwnedReadHalf<TcpStream>>;
 
 } // namespace uvio::net

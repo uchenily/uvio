@@ -1,7 +1,7 @@
 #pragma once
 
 #include <algorithm>
-#include <memory>
+#include <cstddef>
 #include <span>
 #include <string_view>
 
@@ -15,21 +15,20 @@ namespace uvio::io::detail {
 /// 0    <=     r_pos_   <=     w_pos_    <=     size
 ///               |<-r_remaining->|<-w_remaining->|
 
-template <int SIZE>
 class StreamBuffer {
 public:
-    StreamBuffer()
-        : buf_{std::make_unique<std::array<char, SIZE>>()} {}
+    StreamBuffer(std::size_t size = DEFAULT_BUF_SIZE)
+        : buf_(size) {}
 
     auto r_remaining() const noexcept -> int {
         return w_pos_ - r_pos_;
     }
 
-    auto r_begin() const noexcept -> std::array<char, SIZE>::const_iterator {
-        return buf_->begin() + r_pos_;
+    auto r_begin() const noexcept -> std::vector<char>::const_iterator {
+        return buf_.begin() + r_pos_;
     }
 
-    auto r_end() const noexcept -> std::array<char, SIZE>::const_iterator {
+    auto r_end() const noexcept -> std::vector<char>::const_iterator {
         return r_begin() + r_remaining();
     }
 
@@ -38,14 +37,14 @@ public:
     }
 
     auto w_remaining() const noexcept -> int {
-        return static_cast<int>(buf_->size()) - w_pos_;
+        return static_cast<int>(buf_.size()) - w_pos_;
     }
 
-    auto w_begin() noexcept -> std::array<char, SIZE>::iterator {
-        return buf_->begin() + w_pos_;
+    auto w_begin() noexcept -> std::vector<char>::iterator {
+        return buf_.begin() + w_pos_;
     }
 
-    auto w_end() noexcept -> std::array<char, SIZE>::iterator {
+    auto w_end() noexcept -> std::vector<char>::iterator {
         return w_begin() + w_remaining();
     }
 
@@ -58,7 +57,7 @@ public:
     }
 
     auto capacity() const noexcept -> std::size_t {
-        return buf_->size();
+        return buf_.size();
     }
 
     auto write_to(std::span<char> dst) noexcept -> std::size_t {
@@ -101,7 +100,7 @@ public:
     }
 
     auto disable() noexcept -> void {
-        // buf_->clear();
+        // buf_.clear();
         // better
         // std::array<char, SIZE>().swap(buf_);
     }
@@ -113,7 +112,7 @@ public:
 
     void reset_data() noexcept {
         auto len = r_remaining();
-        std::copy(r_begin(), r_end(), buf_->begin());
+        std::copy(r_begin(), r_end(), buf_.begin());
         r_pos_ = 0;
         w_pos_ = len;
     }
@@ -133,12 +132,10 @@ public:
         static_cast<std::size_t>(8 * 1024)};
 
 private:
-    using BufPtr = std::unique_ptr<std::array<char, SIZE>>;
-
 private:
-    BufPtr buf_;
-    int    r_pos_{0};
-    int    w_pos_{0};
+    std::vector<char> buf_;
+    int               r_pos_{0};
+    int               w_pos_{0};
 };
 
 } // namespace uvio::io::detail

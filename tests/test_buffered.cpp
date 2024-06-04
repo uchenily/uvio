@@ -8,8 +8,9 @@ using namespace uvio::io;
 
 auto process(TcpStream stream) -> Task<> {
     // BufStream<TcpStream, 1, 1> buffered_stream(std::move(stream));
-    BufStream<TcpStream, 1024, 1024> buffered_stream(std::move(stream));
-    int                              count = 0;
+    BufStream<TcpStream> buffered_stream(std::move(stream), 1024, 1024);
+
+    int count = 0;
     while (true) {
         std::array<char, 64> small_buf{};
 

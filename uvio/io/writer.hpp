@@ -5,16 +5,17 @@
 
 namespace uvio::io {
 
-template <class IO, int WBUF_SIZE>
+template <class IO>
     requires requires(IO io, std::span<const char> buf) {
         { io.write(buf) };
     }
-class BufWriter : public detail::ImplBufWrite<BufWriter<IO, WBUF_SIZE>> {
-    friend class detail::ImplBufWrite<BufWriter<IO, WBUF_SIZE>>;
+class BufWriter : public detail::ImplBufWrite<BufWriter<IO>> {
+    friend class detail::ImplBufWrite<BufWriter<IO>>;
 
 public:
-    BufWriter(IO &&io)
-        : io_{std::move(io)} {}
+    BufWriter(IO &&io, std::size_t size)
+        : io_{std::move(io)}
+        , w_stream_{size} {}
 
     BufWriter(BufWriter &&other) noexcept
         : io_{std::move(other.io_)}
@@ -41,8 +42,8 @@ public:
     }
 
 private:
-    IO                              io_;
-    detail::StreamBuffer<WBUF_SIZE> w_stream_;
+    IO                   io_;
+    detail::StreamBuffer w_stream_;
 };
 
 } // namespace uvio::io

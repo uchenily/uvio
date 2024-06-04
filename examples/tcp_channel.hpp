@@ -10,15 +10,15 @@ using namespace uvio;
 using namespace uvio::net;
 using namespace uvio::codec;
 
-using BufferedReader = TcpReader<1024>;
-using BufferedWriter = TcpWriter<1024>;
+using BufferedReader = TcpReader;
+using BufferedWriter = TcpWriter;
 
 class Channel {
 public:
     explicit Channel(TcpStream &&stream) {
-        auto [reader, writer] = stream.into_split();
-        buffered_reader_ = std::move(reader);
-        buffered_writer_ = std::move(writer);
+        auto [reader, writer] = std::move(stream).into_split();
+        buffered_reader_ = BufferedReader{std::move(reader), 1024};
+        buffered_writer_ = BufferedWriter{std::move(writer), 1024};
     }
 
 public:
@@ -41,8 +41,10 @@ public:
     // }
 
 private:
-    BufferedReader buffered_reader_{io::OwnedReadHalf<TcpStream>{nullptr}};
-    BufferedWriter buffered_writer_{io::OwnedWriteHalf<TcpStream>{nullptr}};
+    BufferedReader buffered_reader_{io::OwnedReadHalf<TcpStream>{nullptr},
+                                    1024};
+    BufferedWriter buffered_writer_{io::OwnedWriteHalf<TcpStream>{nullptr},
+                                    1024};
     // LengthDelimitedCodec<BufferedReader, BufferedWriter> codec_{};
     FixedLength32Codec codec_;
 };

@@ -6,20 +6,21 @@
 
 namespace uvio::io {
 
-template <typename IO, int RBUF_SIZE, int WBUF_SIZE>
+template <typename IO>
     requires requires(IO io, std::span<char> buf) {
         { io.read(buf) };
         { io.write(buf) };
     }
-class BufStream
-    : public detail::ImplBufRead<BufStream<IO, RBUF_SIZE, WBUF_SIZE>>,
-      public detail::ImplBufWrite<BufStream<IO, RBUF_SIZE, WBUF_SIZE>> {
-    friend class detail::ImplBufRead<BufStream<IO, RBUF_SIZE, WBUF_SIZE>>;
-    friend class detail::ImplBufWrite<BufStream<IO, RBUF_SIZE, WBUF_SIZE>>;
+class BufStream : public detail::ImplBufRead<BufStream<IO>>,
+                  public detail::ImplBufWrite<BufStream<IO>> {
+    friend class detail::ImplBufRead<BufStream<IO>>;
+    friend class detail::ImplBufWrite<BufStream<IO>>;
 
 public:
-    BufStream(IO &&io)
-        : io_{std::move(io)} {}
+    BufStream(IO &&io, std::size_t rbuf_size, std::size_t wbuf_size)
+        : io_{std::move(io)}
+        , r_stream_{rbuf_size}
+        , w_stream_{wbuf_size} {}
 
     BufStream(BufStream &&other) noexcept
         : io_{std::move(other.io_)}
@@ -49,9 +50,9 @@ public:
     }
 
 private:
-    IO                              io_;
-    detail::StreamBuffer<RBUF_SIZE> r_stream_;
-    detail::StreamBuffer<WBUF_SIZE> w_stream_;
+    IO                   io_;
+    detail::StreamBuffer r_stream_;
+    detail::StreamBuffer w_stream_;
 };
 
 } // namespace uvio::io

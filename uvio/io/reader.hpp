@@ -6,16 +6,17 @@
 
 namespace uvio::io {
 
-template <typename IO, int RBUF_SIZE>
+template <typename IO>
     requires requires(IO io, std::span<char> buf) {
         { io.read(buf) };
     }
-class BufReader : public detail::ImplBufRead<BufReader<IO, RBUF_SIZE>> {
-    friend class detail::ImplBufRead<BufReader<IO, RBUF_SIZE>>;
+class BufReader : public detail::ImplBufRead<BufReader<IO>> {
+    friend class detail::ImplBufRead<BufReader<IO>>;
 
 public:
-    BufReader(IO &&io)
-        : io_{std::move(io)} {}
+    BufReader(IO &&io, std::size_t size)
+        : io_{std::move(io)}
+        , r_stream_{size} {}
 
     BufReader(BufReader &&other) noexcept
         : io_{std::move(other.io_)}
@@ -40,7 +41,7 @@ public:
     }
 
 private:
-    IO                              io_;
-    detail::StreamBuffer<RBUF_SIZE> r_stream_;
+    IO                   io_;
+    detail::StreamBuffer r_stream_;
 };
 } // namespace uvio::io
