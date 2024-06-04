@@ -174,7 +174,7 @@ public:
 class HttpFramed {
 public:
     explicit HttpFramed(TcpStream &&stream) {
-        auto [reader, writer] = stream.into_split();
+        auto [reader, writer] = std::move(stream).into_split();
         buffered_reader_ = std::move(reader);
         buffered_writer_ = std::move(writer);
     }

@@ -22,7 +22,7 @@ namespace detail {
 } // namespace detail
 
 static inline auto block_on(Task<> &&first_coro) {
-    auto handle = first_coro.take();
+    auto handle = std::move(first_coro).take();
     console.debug("loop run ...");
     handle.resume();
 
@@ -37,7 +37,7 @@ static inline auto block_on(Task<> &&first_coro) {
 }
 
 static inline auto spawn(Task<> &&task) {
-    auto handle = task.take();
+    auto handle = std::move(task).take();
     console.debug("spawn task ...");
     handle.resume();
     console.debug("spawn end.");
