@@ -5,13 +5,15 @@
 
 namespace uvio::codec {
 
-template <typename Derived, typename Reader, typename Writer>
+template <typename Derived>
 class Codec {
 public:
+    template <typename Reader>
     auto Decode(Reader &reader) -> Task<Result<std::string>> {
         co_return co_await static_cast<Derived *>(this)->decode(reader);
     }
 
+    template <typename Writer>
     auto Encode(std::span<const char> message, Writer &writer)
         -> Task<Result<void>> {
         co_return co_await static_cast<Derived *>(this)->encode(message,
@@ -19,10 +21,9 @@ public:
     }
 };
 
-template <typename Reader, typename Writer>
-class FixedLength32Codec
-    : public Codec<FixedLength32Codec<Reader, Writer>, Reader, Writer> {
+class FixedLength32Codec : public Codec<FixedLength32Codec> {
 public:
+    template <typename Reader>
     auto decode(Reader &reader) -> Task<Result<std::string>> {
         auto has_length = co_await decode_length(reader);
         if (!has_length) {
@@ -37,6 +38,7 @@ public:
         co_return message;
     }
 
+    template <typename Writer>
     auto encode(std::span<const char> message, Writer &writer)
         -> Task<Result<void>> {
         uint32_t length = message.size();
@@ -57,6 +59,7 @@ private:
     static constexpr int fixed_length_bytes = 4;
 
 private:
+    template <typename Reader>
     auto decode_length(Reader &reader) -> Task<Result<uint32_t>> {
         std::array<char, 1> bytes{};
         uint32_t            value{};
@@ -70,6 +73,7 @@ private:
         co_return value;
     }
 
+    template <typename Writer>
     auto encode_length(uint32_t value, Writer &writer) -> Task<Result<void>> {
         std::array<char, 1> bytes{};
         for (int i = 0; i < fixed_length_bytes; ++i) {
@@ -83,12 +87,11 @@ private:
     }
 };
 
-template <typename Reader, typename Writer>
-class LengthDelimitedCodec
-    : public Codec<LengthDelimitedCodec<Reader, Writer>, Reader, Writer> {
+class LengthDelimitedCodec : public Codec<LengthDelimitedCodec> {
 public:
     // friend class Codec<LengthDelimitedCodec<Reader, Writer>, Reader, Writer>;
 
+    template <typename Reader>
     auto decode(Reader &reader) -> Task<Result<std::string>> {
         // std::array<unsigned char, 4> msg_len{};
         //
@@ -114,6 +117,7 @@ public:
         co_return message;
     }
 
+    template <typename Writer>
     auto encode(std::span<const char> message, Writer &writer)
         -> Task<Result<void>> {
         // std::array<unsigned char, 4> msg_len{};
@@ -144,6 +148,7 @@ public:
     }
 
 private:
+    template <typename Reader>
     auto decode_length(Reader &reader) -> Task<Result<uint64_t>> {
         // Maximum number of bytes required to encode an uint64_t (7 * 10 > 64)
         static constexpr int max_varint_bytes = 10;
@@ -163,6 +168,7 @@ private:
         co_return unexpected{make_uvio_error(Error::Unclassified)};
     }
 
+    template <typename Writer>
     auto encode_length(uint64_t value, Writer &writer) -> Task<Result<void>> {
         // Encodes value in varint format and writes the result by writer
         std::array<char, 1> bytes;

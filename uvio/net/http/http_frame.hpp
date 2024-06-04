@@ -18,9 +18,9 @@ using namespace uvio::codec;
 using BufferedReader = TcpReader<1024>;
 using BufferedWriter = TcpWriter<1024>;
 
-template <typename Reader, typename Writer>
-class HttpCodec : public Codec<HttpCodec<Reader, Writer>, Reader, Writer> {
+class HttpCodec : public Codec<HttpCodec> {
 public:
+    template <typename Reader>
     auto decode(Reader &reader) -> Task<Result<std::string>> {
         HttpRequest req;
         std::string request_line;
@@ -63,6 +63,7 @@ public:
         co_return body;
     }
 
+    template <typename Writer>
     auto encode(std::span<const char> message, Writer &writer)
         -> Task<Result<void>> {
         LOG_DEBUG("http response encoding ...");
@@ -195,6 +196,6 @@ public:
 private:
     BufferedReader buffered_reader_{io::OwnedReadHalf<TcpStream>{nullptr}};
     BufferedWriter buffered_writer_{io::OwnedWriteHalf<TcpStream>{nullptr}};
-    HttpCodec<BufferedReader, BufferedWriter> codec_{};
+    HttpCodec      codec_{};
 };
 } // namespace uvio::net::http
