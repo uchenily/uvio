@@ -188,7 +188,8 @@ public:
     [[REMEMBER_CO_AWAIT]]
     auto read_request() -> Task<Result<HttpRequest>> {
         auto result = co_await codec_.Decode(buffered_reader_);
-        co_return HttpRequest{.body = result.value()};
+        // FIXME: Decode() -> HttpRequest?
+        co_return HttpRequest{.url = "/", .body = result.value()};
     }
 
 private:
