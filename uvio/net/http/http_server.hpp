@@ -20,8 +20,8 @@ public:
         , port_{port} {}
 
 public:
-    auto set_handler(std::string_view url, HandlerFunc &&func) {
-        map_handles_[url] = std::move(func);
+    auto set_handler(std::string_view uri, HandlerFunc &&func) {
+        map_handles_[uri] = std::move(func);
     }
 
     auto run() {
@@ -47,10 +47,10 @@ private:
         }
 
         auto request = std::move(req.value());
-        LOG_DEBUG("request url: {} body: {}", request.url, request.body);
+        LOG_DEBUG("request uri: {} body: {}", request.uri, request.body);
 
         HttpResponse resp;
-        if (auto it = map_handles_.find(request.url);
+        if (auto it = map_handles_.find(request.uri);
             it != map_handles_.end()) {
             it->second(request, resp);
             resp.http_code = 200;

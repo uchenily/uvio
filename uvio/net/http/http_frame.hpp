@@ -21,7 +21,7 @@ using BufferedWriter = TcpWriter;
 class HttpCodec : public Codec<HttpCodec> {
 public:
     template <typename Reader>
-    auto decode(Reader &reader) -> Task<Result<std::string>> {
+    auto decode(Reader &reader) -> Task<Result<HttpRequest>> {
         HttpRequest req;
         std::string request_line;
         if (auto ret = co_await reader.read_until(request_line, "\r\n"); !ret) {
@@ -37,6 +37,8 @@ public:
         LOG_DEBUG("method: {}", method);
         LOG_DEBUG("uri: {}", uri);
         LOG_DEBUG("version: {}", version);
+        req.method = method;
+        req.uri = uri;
 
         std::string request_headers;
         if (auto ret = co_await reader.read_until(request_headers, "\r\n\r\n");
@@ -47,6 +49,7 @@ public:
         // Host: xxx
         // Content-Type: application/html
         auto headers = parse_headers(request_headers);
+        req.headers = headers;
 
         std::string body;
 
@@ -58,9 +61,10 @@ public:
                 co_return unexpected{ret.error()};
             }
             LOG_DEBUG("body: `{}`", body);
+            req.body = body;
         }
 
-        co_return body;
+        co_return req;
     }
 
     template <typename Writer>
@@ -188,9 +192,7 @@ public:
 
     [[REMEMBER_CO_AWAIT]]
     auto read_request() -> Task<Result<HttpRequest>> {
-        auto result = co_await codec_.Decode<std::string>(buffered_reader_);
-        // FIXME: Decode() -> HttpRequest?
-        co_return HttpRequest{.url = "/", .body = result.value()};
+        co_return co_await codec_.Decode<HttpRequest>(buffered_reader_);
     }
 
 private:

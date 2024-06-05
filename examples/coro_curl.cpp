@@ -12,7 +12,8 @@ using namespace uvio::net::http;
 auto client() -> Task<> {
     HttpRequest req = {
         .method = "GET",
-        .url = "http://httpbin.org/json",
+        // TODO(x)
+        .uri = "http://httpbin.org/json",
     };
     auto ret = co_await HttpClient::request(req);
     if (!ret) {

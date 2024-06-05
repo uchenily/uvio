@@ -51,7 +51,7 @@ public:
                                   CURLMOPT_TIMERDATA,
                                   this);
 
-                http_request(req.url);
+                http_request(req.uri);
             }
 
             void http_request(std::string_view url) {
