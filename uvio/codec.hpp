@@ -8,14 +8,14 @@ namespace uvio::codec {
 template <typename Derived>
 class Codec {
 public:
-    template <typename Reader>
-    auto Decode(Reader &reader) -> Task<Result<std::string>> {
+    template <typename Ret, typename Reader>
+    auto Decode(Reader &reader) -> Task<Result<Ret>> {
         co_return co_await static_cast<Derived *>(this)->decode(reader);
     }
 
-    template <typename Writer>
+    template <typename Ret, typename Writer>
     auto Encode(std::span<const char> message, Writer &writer)
-        -> Task<Result<void>> {
+        -> Task<Result<Ret>> {
         co_return co_await static_cast<Derived *>(this)->encode(message,
                                                                 writer);
     }

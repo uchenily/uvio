@@ -183,12 +183,12 @@ public:
 public:
     [[REMEMBER_CO_AWAIT]]
     auto write_response(HttpResponse resp) -> Task<Result<void>> {
-        co_return co_await codec_.Encode(resp.body, buffered_writer_);
+        co_return co_await codec_.Encode<void>(resp.body, buffered_writer_);
     }
 
     [[REMEMBER_CO_AWAIT]]
     auto read_request() -> Task<Result<HttpRequest>> {
-        auto result = co_await codec_.Decode(buffered_reader_);
+        auto result = co_await codec_.Decode<std::string>(buffered_reader_);
         // FIXME: Decode() -> HttpRequest?
         co_return HttpRequest{.url = "/", .body = result.value()};
     }
