@@ -1,5 +1,7 @@
 #pragma once
 
+#include "uvio/debug.hpp"
+
 #include <algorithm>
 #include <cstddef>
 #include <span>
@@ -81,8 +83,12 @@ public:
 
     auto find_flag_and_return_slice(std::string_view end_str) const noexcept
         -> std::span<const char> {
+        LOG_DEBUG("r_slice(): `{}` ({} bytes)",
+                  std::string_view{r_slice().data(), r_slice().size()},
+                  r_slice().size_bytes());
         auto pos = std::string_view{r_slice().data()}.find(end_str);
         if (pos == std::string_view::npos) {
+            LOG_DEBUG("not found: {}", end_str);
             return {};
         } else {
             return {r_begin(), pos + end_str.size()};

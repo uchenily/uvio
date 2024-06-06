@@ -40,7 +40,14 @@ public:
         req.method = method;
         req.uri = uri;
 
-        std::string request_headers;
+        std::string request_headers(2, 0);
+        if (auto ret = co_await reader.read_exact(request_headers); !ret) {
+            co_return unexpected{ret.error()};
+        } else if (request_headers == "\r\n") {
+            // no request_headers
+            co_return req;
+        }
+
         if (auto ret = co_await reader.read_until(request_headers, "\r\n\r\n");
             !ret) {
             co_return unexpected{ret.error()};

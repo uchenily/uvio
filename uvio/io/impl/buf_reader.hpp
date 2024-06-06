@@ -109,10 +109,10 @@ public:
                     slice.size_bytes());
                 break;
             } else {
-                auto readable
-                    = static_cast<Derived *>(this)->r_stream_.r_slice();
-                buf.append(readable.begin(), readable.end());
-                static_cast<Derived *>(this)->r_stream_.reset_pos();
+                // auto readable
+                //     = static_cast<Derived *>(this)->r_stream_.r_slice();
+                // buf.append(readable.begin(), readable.end());
+                // static_cast<Derived *>(this)->r_stream_.reset_pos();
             }
 
             ret = co_await static_cast<Derived *>(this)->io_.read(

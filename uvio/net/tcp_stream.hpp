@@ -94,6 +94,7 @@ public:
                                 console.warn("Tcp stream disconnected");
                             }
                         }
+                        LOG_DEBUG("read {} bytes", nread);
 
                         if (data->handle_) {
                             data->handle_.resume();
