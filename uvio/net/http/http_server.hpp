@@ -12,7 +12,7 @@ namespace uvio::net::http {
 
 class HttpServer {
     using HandlerFunc
-        = std::function<void(HttpRequest &req, HttpResponse &resp)>;
+        = std::function<void(const HttpRequest &req, HttpResponse &resp)>;
 
 public:
     HttpServer(std::string_view host, int port)
