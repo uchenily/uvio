@@ -12,6 +12,11 @@ public:
     [[REMEMBER_CO_AWAIT]]
     auto write(std::span<const char> buf) noexcept
         -> Task<Result<std::size_t>> {
+        LOG_DEBUG("before write, r_slice()=`{}`, len={}",
+                  std::string{
+                      static_cast<Derived *>(this)->w_stream_.r_slice().data(),
+                      static_cast<Derived *>(this)->w_stream_.r_slice().size()},
+                  static_cast<Derived *>(this)->w_stream_.r_slice().size());
         if (static_cast<Derived *>(this)->w_stream_.w_remaining()
             >= static_cast<int>(buf.size())) {
             co_return static_cast<Derived *>(this)->w_stream_.read_from(buf);

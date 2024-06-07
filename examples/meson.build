@@ -33,6 +33,7 @@ endif
 
 websocket_examples_sources = [
   'websocket_server.cpp',
+  'websocket_coro.cpp',
 ]
 if openssl_dep.found()
   foreach source: websocket_examples_sources

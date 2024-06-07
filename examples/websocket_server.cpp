@@ -381,14 +381,6 @@ public:
         return data_;
     }
 
-    // Adjusts how much we're willing to accept from clients
-    // Note: this can only be set while we don't have clients (preferably before
-    // listening)
-    inline void SetMaxMessageSize(size_t v) {
-        assert(connections_.empty());
-        max_message_size_ = v;
-    }
-
     // Alternative protocol means that the client sends a 0x00, and we skip all
     // websocket protocol This means clients don't call CheckConnection, and
     // they receive an empty request header in the connection callback Opcode is
@@ -458,7 +450,7 @@ public:
     void                                    *data_{nullptr};
     std::vector<std::unique_ptr<Connection>> connections_;
     bool                                     allow_alternative_protocol_{false};
-    size_t max_message_size_{static_cast<size_t>(16 * 1024)};
+    size_t max_message_size_{static_cast<size_t>(16 * 1024 * 1024)};
 
     CheckConnectionFn            CheckConnection_cb = nullptr;
     CheckAlternativeConnectionFn CheckAlternativeConnection_cb = nullptr;
@@ -997,31 +989,32 @@ void Connection::OnSocketData(char *data, size_t len) {
         }
     };
 
-    if (!m_bHasCompletedHandshake && m_pServer->GetAllowAlternativeProtocol()
-        && buffer[0] == 0x00) {
-        m_bHasCompletedHandshake = true;
-        m_bUsingAlternativeProtocol = true;
-        Consume(1);
-
-        if (!m_pServer->CheckAlternativeConnection_cb
-            || m_pServer->CheckAlternativeConnection_cb(this)) {
-            Destroy();
-            return;
-        }
-
-        RequestHeaders const headers;
-        HTTPRequest          req{
-            m_pServer,
-            "GET",
-            "/",
-            m_IP,
-            headers,
-        };
-
-        if (m_pServer->ConnectionConnected_cb) {
-            m_pServer->ConnectionConnected_cb(req);
-        }
-    } else if (!m_bHasCompletedHandshake) {
+    // if (!m_bHasCompletedHandshake && m_pServer->GetAllowAlternativeProtocol()
+    //     && buffer[0] == 0x00) {
+    //     m_bHasCompletedHandshake = true;
+    //     m_bUsingAlternativeProtocol = true;
+    //     Consume(1);
+    //
+    //     if (!m_pServer->CheckAlternativeConnection_cb
+    //         || m_pServer->CheckAlternativeConnection_cb(this)) {
+    //         Destroy();
+    //         return;
+    //     }
+    //
+    //     RequestHeaders const headers;
+    //     HTTPRequest          req{
+    //         m_pServer,
+    //         "GET",
+    //         "/",
+    //         m_IP,
+    //         headers,
+    //     };
+    //
+    //     if (m_pServer->ConnectionConnected_cb) {
+    //         m_pServer->ConnectionConnected_cb(req);
+    //     }
+    // } else if (!m_bHasCompletedHandshake) {
+    if (!m_bHasCompletedHandshake) {
         // HTTP headers not done yet, wait
         auto endOfHeaders = buffer.find("\r\n\r\n");
         if (endOfHeaders == std::string_view::npos) {
@@ -1642,11 +1635,6 @@ void Connection::Cork(bool v) {
 
 auto main() -> int {
     Server server{uv_default_loop()};
-
-    // I recommend against setting these limits, they're way too high and
-    // allow easy DDoSes. Use the default settings. These are just here to
-    // pass tests
-    server.SetMaxMessageSize(static_cast<size_t>(256 * 1024 * 1024)); // 256 MB
 
     server.SetConnectionConnectedCallback([](HTTPRequest &) {
         LOG_DEBUG("Connection connected");
