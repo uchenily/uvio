@@ -70,16 +70,13 @@ private:
 #endif
             auto solvedHash = base64_encode(hash.data(), hash.size());
 
-            //                "HTTP/1.1 101 Switching Protocols\r\n"
-            //                "Upgrade: websocket\r\n"
-            //                "Connection: Upgrade\r\n"
-            //                "Sec-WebSocket-Accept: %s\r\n\r\n",
-
             resp.headers.add("Upgrade", "websocket");
             resp.headers.add("Connection", "Upgrade");
             resp.headers.add("Sec-WebSocket-Version", "13");
             resp.headers.add("Sec-WebSocket-Accept", solvedHash);
             co_await websocket_framed.write_response(resp);
+
+            co_await data_transfer(websocket_framed);
             co_return;
         }
 
@@ -97,6 +94,14 @@ private:
             console.error("{}", res.error().message());
             co_return;
         }
+    }
+
+    auto data_transfer(WebsocketFramed &websocket_framed) -> Task<> {
+        auto message = co_await websocket_framed.recv();
+        if (message) {
+            LOG_DEBUG("Received: {}", message.value());
+        }
+        co_return;
     }
 
 private:

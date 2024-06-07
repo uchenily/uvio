@@ -20,7 +20,7 @@ using namespace uvio::codec;
 using BufferedReader = TcpReader;
 using BufferedWriter = TcpWriter;
 
-class WebsocketCodec : public Codec<WebsocketCodec> {
+class HttpCodec : public Codec<HttpCodec> {
 public:
     template <typename Reader>
     auto decode(Reader &reader) -> Task<Result<HttpRequest>> {
@@ -207,6 +207,21 @@ public:
     }
 };
 
+class WebsocketCodec : public Codec<WebsocketCodec> {
+public:
+    template <typename Reader>
+    auto decode(Reader &reader) -> Task<Result<std::string>> {
+        co_return std::string{"hello"};
+    }
+
+    template <typename Writer>
+    auto encode(std::span<const char> message, Writer &writer)
+        -> Task<Result<void>> {
+        // writer.write(message);
+        co_return Result<void>{};
+    }
+};
+
 class WebsocketFramed {
 public:
     explicit WebsocketFramed(TcpStream &&stream) {
@@ -218,12 +233,24 @@ public:
 public:
     [[REMEMBER_CO_AWAIT]]
     auto write_response(HttpResponse resp) -> Task<Result<void>> {
-        co_return co_await codec_.Encode<void>(resp, buffered_writer_);
+        co_return co_await http_codec_.Encode<void>(resp, buffered_writer_);
     }
 
     [[REMEMBER_CO_AWAIT]]
     auto read_request() -> Task<Result<HttpRequest>> {
-        co_return co_await codec_.Decode<HttpRequest>(buffered_reader_);
+        co_return co_await http_codec_.Decode<HttpRequest>(buffered_reader_);
+    }
+
+    [[REMEMBER_CO_AWAIT]]
+    auto recv() -> Task<Result<std::string>> {
+        co_return co_await websocket_codec_.Decode<std::string>(
+            buffered_reader_);
+    }
+
+    [[REMEMBER_CO_AWAIT]]
+    auto send(std::span<const char> message) -> Task<Result<void>> {
+        co_return co_await websocket_codec_.Encode<void>(message,
+                                                         buffered_writer_);
     }
 
 private:
@@ -231,6 +258,7 @@ private:
                                     1024};
     BufferedWriter buffered_writer_{io::OwnedWriteHalf<TcpStream>{nullptr},
                                     1024};
-    WebsocketCodec codec_{};
+    HttpCodec      http_codec_{};
+    WebsocketCodec websocket_codec_{};
 };
 } // namespace uvio::net::websocket
