@@ -558,11 +558,11 @@ private:
 
 class Server {
 public:
-    using CheckTCPConnectionFn = bool (*)(std::string_view, bool);
+    using CheckSSLConnectionFn = bool (*)(std::string_view, bool);
     using CheckConnectionFn = bool (*)(HTTPRequest &);
     using CheckAlternativeConnectionFn = bool (*)(Client *);
-    using ClientConnectedFn = void (*)(Client *, HTTPRequest &);
-    using ClientDisconnectedFn = void (*)(Client *);
+    using ClientConnectedFn = void (*)(HTTPRequest &);
+    using ClientDisconnectedFn = void (*)();
     using ClientDataFn = void (*)(Client *, char *, size_t, int);
     using HTTPRequestFn = void (*)(HTTPRequest &, HTTPResponse &);
 
@@ -670,8 +670,8 @@ public:
     // This callback is called when we know whether a TCP connection wants a
     // secure connection or not, once we receive the very first byte from the
     // client
-    void SetCheckTCPConnectionCallback(CheckTCPConnectionFn v) {
-        CheckTCPConnection_cb = v;
+    void SetCheckSSLConnectionCallback(CheckSSLConnectionFn v) {
+        CheckSSLConnection_cb = v;
     }
 
     // // This callback is called when the client is trying to connect using
@@ -788,9 +788,9 @@ public:
         }
     }
 
-    void NotifyClientInit(Client *client, HTTPRequest &req) const {
+    void NotifyClientInit(HTTPRequest &req) const {
         if (ClientConnected_cb) {
-            ClientConnected_cb(client, req);
+            ClientConnected_cb(req);
         }
     }
 
@@ -823,7 +823,7 @@ public:
     bool                                 allow_alternative_protocol_{false};
     size_t max_message_size_{static_cast<size_t>(16 * 1024)};
 
-    CheckTCPConnectionFn         CheckTCPConnection_cb = nullptr;
+    CheckSSLConnectionFn         CheckSSLConnection_cb = nullptr;
     CheckConnectionFn            CheckConnection_cb = nullptr;
     CheckAlternativeConnectionFn CheckAlternativeConnection_cb = nullptr;
     ClientConnectedFn            ClientConnected_cb = nullptr;
@@ -1102,7 +1102,7 @@ void Client::Destroy() {
         auto req = (ShutdownRequest *) reqq;
 
         if (req->cb && req->client->m_bHasCompletedHandshake) {
-            req->cb(req->client.get());
+            req->cb();
         }
 
         delete req;
@@ -1310,15 +1310,15 @@ void Client::OnRawSocketData(char *data, size_t len) {
 
         if (m_pServer->GetSSLContext() != nullptr
             && (data[0] == 0x16 || static_cast<uint8_t>(data[0]) == 0x80)) {
-            if (m_pServer->CheckTCPConnection_cb
-                && !m_pServer->CheckTCPConnection_cb(GetIP(), true)) {
+            if (m_pServer->CheckSSLConnection_cb
+                && !m_pServer->CheckSSLConnection_cb(GetIP(), true)) {
                 return Destroy();
             }
 
             InitSecure();
         } else {
-            if (m_pServer->CheckTCPConnection_cb
-                && !m_pServer->CheckTCPConnection_cb(GetIP(), false)) {
+            if (m_pServer->CheckSSLConnection_cb
+                && !m_pServer->CheckSSLConnection_cb(GetIP(), false)) {
                 return Destroy();
             }
         }
@@ -1416,7 +1416,7 @@ void Client::OnSocketData(char *data, size_t len) {
             headers,
         };
 
-        m_pServer->NotifyClientInit(this, req);
+        m_pServer->NotifyClientInit(req);
     } else if (!m_bHasCompletedHandshake) {
         // HTTP headers not done yet, wait
         auto endOfHeaders = buffer.find("\r\n\r\n");
@@ -1672,7 +1672,7 @@ void Client::OnSocketData(char *data, size_t len) {
 
         m_bHasCompletedHandshake = true;
 
-        m_pServer->NotifyClientInit(this, req);
+        m_pServer->NotifyClientInit(req);
 
         m_Buffer.clear();
 
@@ -2048,8 +2048,6 @@ void Client::Cork(bool v) {
 //===============================================================================
 
 auto main() -> int {
-    static intptr_t userID = 0;
-
     Server server{uv_default_loop()};
 
     // I recommend against setting these limits, they're way too high and
@@ -2057,13 +2055,12 @@ auto main() -> int {
     // pass tests
     server.SetMaxMessageSize(static_cast<size_t>(256 * 1024 * 1024)); // 256 MB
 
-    server.SetClientConnectedCallback([](Client *client, HTTPRequest &) {
-        client->SetUserData((void *) ++userID);
-        LOG_DEBUG("Client {} connected", userID);
+    server.SetClientConnectedCallback([](HTTPRequest &) {
+        LOG_DEBUG("Client connected");
     });
 
-    server.SetClientDisconnectedCallback([](Client *client) {
-        LOG_DEBUG("Client {} disconnected", client->GetUserData());
+    server.SetClientDisconnectedCallback([]() {
+        LOG_DEBUG("Client disconnected");
     });
 
     server.SetClientDataCallback(
