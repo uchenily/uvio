@@ -1,10 +1,11 @@
+#include "uvio/debug.hpp"
+
 #include <algorithm>
 #include <cassert>
 #include <cctype>
 #include <csignal>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -1516,23 +1517,35 @@ void Client::OnSocketData(char *data, size_t len) {
 
         auto solvedHash = base64_encode(hash, sizeof(hash));
 
-        char buf[256]; // We can use up to 101 + 27 + 28 + 1 characters, and we
-                       // round up just because
-        int const bufLen
-            = snprintf(buf,
-                       sizeof(buf),
-                       "HTTP/1.1 101 Switching Protocols\r\n"
-                       "Upgrade: websocket\r\n"
-                       "Connection: Upgrade\r\n"
-                       "%s"
-                       "Sec-WebSocket-Accept: %s\r\n\r\n",
+        // char buf[256]; // We can use up to 101 + 27 + 28 + 1 characters, and
+        // we
+        //                // round up just because
+        // int const bufLen
+        //     = snprintf(buf,
+        //                sizeof(buf),
+        //                "HTTP/1.1 101 Switching Protocols\r\n"
+        //                "Upgrade: websocket\r\n"
+        //                "Connection: Upgrade\r\n"
+        //                "%s"
+        //                "Sec-WebSocket-Accept: %s\r\n\r\n",
+        //
+        //                sendMyVersion ? "Sec-WebSocket-Version: 13\r\n" : "",
+        //                solvedHash.c_str());
+        // assert(bufLen >= 0 && (size_t) bufLen < sizeof(buf));
+        //
+        // Write(buf, bufLen);
 
-                       sendMyVersion ? "Sec-WebSocket-Version: 13\r\n" : "",
-                       solvedHash.c_str());
+        auto msg
+            = std::format("HTTP/1.1 101 Switching Protocols\r\n"
+                          "Upgrade: websocket\r\n"
+                          "Connection: Upgrade\r\n"
+                          "{}"
+                          "Sec-WebSocket-Accept: {}\r\n\r\n",
 
-        assert(bufLen >= 0 && (size_t) bufLen < sizeof(buf));
+                          sendMyVersion ? "Sec-WebSocket-Version: 13\r\n" : "",
+                          solvedHash);
+        Write(msg.data(), msg.size());
 
-        Write(buf, bufLen);
         if (!m_Socket) {
             return; // if write failed, we're being destroyed
         }
@@ -2044,19 +2057,9 @@ auto Server::NotifyClientPreDestroyed(Client *client)
 //===============================================================================
 
 auto main() -> int {
-    static volatile sig_atomic_t quit = 0;
-
-    signal(SIGINT, [](int) {
-        if (quit != 0) {
-            exit(1);
-        } else {
-            quit = 1;
-        }
-    });
+    static intptr_t userID = 0;
 
     Server s{uv_default_loop()};
-
-    static intptr_t userID = 0;
 
     // I recommend against setting these limits, they're way too high and allow
     // easy DDoSes. Use the default settings. These are just here to pass tests
@@ -2064,18 +2067,16 @@ auto main() -> int {
 
     s.SetClientConnectedCallback([](Client *client, HTTPRequest &) {
         client->SetUserData((void *) ++userID);
-        // printf("Client %d connected\n", (int) userID);
+        LOG_DEBUG("Client {} connected", userID);
     });
 
     s.SetClientDisconnectedCallback([](Client *client) {
-        // printf("Client %d disconnected\n", (int) (intptr_t)
-        // client->GetUserData());
+        LOG_DEBUG("Client {} disconnected", client->GetUserData());
     });
 
     s.SetClientDataCallback(
         [](Client *client, char *data, size_t len, int opcode) {
-            // printf("Client %d: %.*s\n", (int) (intptr_t)
-            // client->GetUserData(), (int) len, data);
+            LOG_DEBUG("Received: {}", std::string_view{data, len});
             client->Send(data, len, opcode);
         });
 
@@ -2091,28 +2092,27 @@ auto main() -> int {
         res.send(ss.str());
     });
 
-    uv_timer_t timer;
-    uv_timer_init(uv_default_loop(), &timer);
-    timer.data = &s;
-    uv_timer_start(
-        &timer,
-        [](uv_timer_t *timer) {
-            if (quit != 0) {
-                puts("Waiting for clients to disconnect, send another SIGINT "
-                     "to force quit");
-                auto &s = *static_cast<Server *>(timer->data);
-                s.StopListening();
-                uv_timer_stop(timer);
-                uv_close(reinterpret_cast<uv_handle_t *>(timer), nullptr);
-            }
-        },
-        10,
-        10);
+    // uv_timer_t timer;
+    // uv_timer_init(uv_default_loop(), &timer);
+    // timer.data = &s;
+    // uv_timer_start(
+    //     &timer,
+    //     [](uv_timer_t *timer) {
+    //         // if (quit != 0) {
+    //         puts("Waiting for clients to disconnect, send another SIGINT "
+    //              "to force quit");
+    //         auto &s = *static_cast<Server *>(timer->data);
+    //         s.StopListening();
+    //         uv_timer_stop(timer);
+    //         uv_close(reinterpret_cast<uv_handle_t *>(timer), nullptr);
+    //         // }
+    //     },
+    //     10,
+    //     10);
+    //
+    s.Listen(3000);
 
-    assert(s.Listen(3000));
-
-    puts("Listening");
+    LOG_DEBUG("Listening on :3000 ...");
     uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-    assert(uv_loop_close(uv_default_loop()) == 0);
-    puts("Clean quit");
+    uv_loop_close(uv_default_loop());
 }
