@@ -70,6 +70,10 @@ public:
         }
     }
 
+    auto inner() const -> const CaseInsensitiveMultimap & {
+        return header_multimap_;
+    }
+
 private:
     CaseInsensitiveMultimap header_multimap_;
 };
