@@ -571,14 +571,101 @@ public:
     // Note: if you provide a SSL_CTX, this server will listen to *BOTH* secure
     // and insecure connections at that port,
     //       sniffing the first byte to figure out whether it's secure or not
-    Server(uv_loop_t *loop, SSL_CTX *ctx = nullptr);
+    Server(uv_loop_t *loop, SSL_CTX *ctx = nullptr)
+        : m_pLoop(loop)
+        , m_pSSLContext(ctx) {
+
+        m_fnCheckConnection = [](Client *, HTTPRequest &req) -> bool {
+            auto host = req.headers.Get("host");
+            if (!host) {
+                return true; // No host header, default to accept
+            }
+
+            auto origin = req.headers.Get("origin");
+            if (!origin) {
+                return true;
+            }
+
+            return origin == host;
+        };
+    }
+
     Server(const Server &other) = delete;
     auto operator=(const Server &other) -> Server & = delete;
-    ~Server();
+    ~Server() {
+        StopListening();
+        DestroyClients();
+    }
 
-    auto Listen(int port, bool ipv4Only = false) -> bool;
-    void StopListening();
-    void DestroyClients();
+    auto Listen(int port, bool ipv4Only = false) -> bool {
+        if (m_Server) {
+            return false;
+        }
+
+        signal(SIGPIPE, SIG_IGN);
+
+        auto server = SocketHandle{new uv_tcp_t};
+        uv_tcp_init_ex(m_pLoop, server.get(), ipv4Only ? AF_INET : AF_INET6);
+        server->data = this;
+
+        struct sockaddr_storage addr;
+
+        if (ipv4Only) {
+            uv_ip4_addr("0.0.0.0",
+                        port,
+                        reinterpret_cast<struct sockaddr_in *>(&addr));
+        } else {
+            uv_ip6_addr("::0",
+                        port,
+                        reinterpret_cast<struct sockaddr_in6 *>(&addr));
+        }
+
+        uv_tcp_nodelay(server.get(), static_cast<int>(true));
+
+        // Enable SO_REUSEPORT
+        uv_os_fd_t fd = 0;
+        int const  r
+            = uv_fileno(reinterpret_cast<uv_handle_t *>(server.get()), &fd);
+        (void) r;
+        assert(r == 0);
+        int optval = 1;
+        setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+
+        if (uv_tcp_bind(server.get(),
+                        reinterpret_cast<struct sockaddr *>(&addr),
+                        0)
+            != 0) {
+            return false;
+        }
+
+        if (uv_listen(reinterpret_cast<uv_stream_t *>(server.get()),
+                      512,
+                      [](uv_stream_t *server, int status) {
+                          (static_cast<Server *>(server->data))
+                              ->OnConnection(server, status);
+                      })
+            != 0) {
+            return false;
+        }
+
+        m_Server = std::move(server);
+        return true;
+    }
+
+    void StopListening() {
+        // Just in case we have more logic in the future
+        if (!m_Server) {
+            return;
+        }
+        m_Server.reset();
+    }
+
+    void DestroyClients() {
+        // Clients will erase themselves from this vector
+        while (!m_Clients.empty()) {
+            m_Clients.back()->Destroy();
+        }
+    }
 
     // This callback is called when we know whether a TCP connection wants a
     // secure connection or not, once we receive the very first byte from the
@@ -677,7 +764,28 @@ public:
     // private:
     // TODO(x)
 public:
-    void OnConnection(uv_stream_t *server, int status);
+    void OnConnection(uv_stream_t *server, int status) {
+        if (status < 0) {
+            return;
+        }
+
+        SocketHandle socket{new uv_tcp_t};
+        uv_tcp_init(m_pLoop, socket.get());
+
+        socket->data = nullptr;
+
+        if (uv_accept(server, reinterpret_cast<uv_stream_t *>(socket.get()))
+            == 0) {
+            auto client = new Client(this, std::move(socket));
+            m_Clients.emplace_back(client);
+
+            // If for whatever reason uv_tcp_getpeername failed (happens...
+            // somehow?)
+            if (client->GetIP()[0] == '\0') {
+                client->Destroy();
+            }
+        }
+    }
 
     void NotifyClientInit(Client *client, HTTPRequest &req) const {
         if (m_fnClientConnected) {
@@ -685,7 +793,19 @@ public:
         }
     }
 
-    auto NotifyClientPreDestroyed(Client *client) -> std::unique_ptr<Client>;
+    auto NotifyClientPreDestroyed(Client *client) -> std::unique_ptr<Client> {
+        for (auto it = m_Clients.begin(); it != m_Clients.end(); ++it) {
+            if (it->get() == client) {
+                std::unique_ptr<Client> r = std::move(*it);
+                *it = std::move(m_Clients.back());
+                m_Clients.pop_back();
+                return r;
+            }
+        }
+
+        assert(false);
+        return {};
+    }
 
     void
     NotifyClientData(Client *client, char *data, size_t len, int opcode) const {
@@ -781,7 +901,8 @@ auto HeaderContains(std::string_view header, std::string_view substring)
             header.remove_prefix(1);
         } else {
             if (detail::equalsi(header, substring, substring.size())) {
-                // We have a match... if the header ends here, or has a comma
+                // We have a match... if the header ends here, or has a
+                // comma
                 hasMatch = true;
                 header.remove_prefix(substring.size());
             } else {
@@ -914,8 +1035,8 @@ Client::Client(Server *server, SocketHandle socket)
             (void) r;
             assert(r == 0);
 
-            // Remove this prefix if it exists, it means that we actually have a
-            // ipv4
+            // Remove this prefix if it exists, it means that we actually
+            // have a ipv4
             static const char *ipv4Prefix = "::ffff:";
             if (strncmp(m_IP, ipv4Prefix, strlen(ipv4Prefix)) == 0) {
                 memmove(m_IP,
@@ -1017,8 +1138,8 @@ void Client::WriteRaw(uv_buf_t bufs[N]) {
         return;
     }
 
-    // Try to write without allocating memory first, if that doesn't work, we
-    // call WriteRawQueue
+    // Try to write without allocating memory first, if that doesn't work,
+    // we call WriteRawQueue
     int written = uv_try_write(reinterpret_cast<uv_stream_t *>(m_Socket.get()),
                                bufs,
                                N);
@@ -1233,11 +1354,12 @@ void Client::OnSocketData(char *data, size_t len) {
         return;
     }
 
-    // If we don't have anything stored in our class-level buffer (m_Buffer),
-    // we use the buffer we received in the function arguments so we don't have
-    // to perform any copying. The Bail function needs to be called before we
-    // leave this function (unless we're destroying the client), to copy the
-    // unused part of the buffer back to our class-level buffer
+    // If we don't have anything stored in our class-level buffer
+    // (m_Buffer), we use the buffer we received in the function arguments
+    // so we don't have to perform any copying. The Bail function needs to
+    // be called before we leave this function (unless we're destroying the
+    // client), to copy the unused part of the buffer back to our
+    // class-level buffer
     std::string_view buffer;
     bool             usingLocalBuffer = false;
 
@@ -1517,8 +1639,8 @@ void Client::OnSocketData(char *data, size_t len) {
 
         auto solvedHash = base64_encode(hash, sizeof(hash));
 
-        // char buf[256]; // We can use up to 101 + 27 + 28 + 1 characters, and
-        // we
+        // char buf[256]; // We can use up to 101 + 27 + 28 + 1 characters,
+        // and we
         //                // round up just because
         // int const bufLen
         //     = snprintf(buf,
@@ -1529,8 +1651,8 @@ void Client::OnSocketData(char *data, size_t len) {
         //                "%s"
         //                "Sec-WebSocket-Accept: %s\r\n\r\n",
         //
-        //                sendMyVersion ? "Sec-WebSocket-Version: 13\r\n" : "",
-        //                solvedHash.c_str());
+        //                sendMyVersion ? "Sec-WebSocket-Version: 13\r\n" :
+        //                "", solvedHash.c_str());
         // assert(bufLen >= 0 && (size_t) bufLen < sizeof(buf));
         //
         // Write(buf, bufLen);
@@ -1925,162 +2047,34 @@ void Client::Cork(bool v) {
 #endif
 }
 
-Server::Server(uv_loop_t *loop, SSL_CTX *ctx)
-    : m_pLoop(loop)
-    , m_pSSLContext(ctx) {
-
-    m_fnCheckConnection = [](Client *, HTTPRequest &req) -> bool {
-        auto host = req.headers.Get("host");
-        if (!host) {
-            return true; // No host header, default to accept
-        }
-
-        auto origin = req.headers.Get("origin");
-        if (!origin) {
-            return true;
-        }
-
-        return origin == host;
-    };
-}
-
-auto Server::Listen(int port, bool ipv4Only) -> bool {
-    if (m_Server) {
-        return false;
-    }
-
-    signal(SIGPIPE, SIG_IGN);
-
-    auto server = SocketHandle{new uv_tcp_t};
-    uv_tcp_init_ex(m_pLoop, server.get(), ipv4Only ? AF_INET : AF_INET6);
-    server->data = this;
-
-    struct sockaddr_storage addr;
-
-    if (ipv4Only) {
-        uv_ip4_addr("0.0.0.0",
-                    port,
-                    reinterpret_cast<struct sockaddr_in *>(&addr));
-    } else {
-        uv_ip6_addr("::0",
-                    port,
-                    reinterpret_cast<struct sockaddr_in6 *>(&addr));
-    }
-
-    uv_tcp_nodelay(server.get(), static_cast<int>(true));
-
-    // Enable SO_REUSEPORT
-    uv_os_fd_t fd = 0;
-    int const r = uv_fileno(reinterpret_cast<uv_handle_t *>(server.get()), &fd);
-    (void) r;
-    assert(r == 0);
-    int optval = 1;
-    setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
-
-    if (uv_tcp_bind(server.get(), reinterpret_cast<struct sockaddr *>(&addr), 0)
-        != 0) {
-        return false;
-    }
-
-    if (uv_listen(reinterpret_cast<uv_stream_t *>(server.get()),
-                  512,
-                  [](uv_stream_t *server, int status) {
-                      (static_cast<Server *>(server->data))
-                          ->OnConnection(server, status);
-                  })
-        != 0) {
-        return false;
-    }
-
-    m_Server = std::move(server);
-    return true;
-}
-
-void Server::StopListening() {
-    // Just in case we have more logic in the future
-    if (!m_Server) {
-        return;
-    }
-
-    m_Server.reset();
-}
-
-void Server::DestroyClients() {
-    // Clients will erase themselves from this vector
-    while (!m_Clients.empty()) {
-        m_Clients.back()->Destroy();
-    }
-}
-
-Server::~Server() {
-    StopListening();
-    DestroyClients();
-}
-
-void Server::OnConnection(uv_stream_t *server, int status) {
-    if (status < 0) {
-        return;
-    }
-
-    SocketHandle socket{new uv_tcp_t};
-    uv_tcp_init(m_pLoop, socket.get());
-
-    socket->data = nullptr;
-
-    if (uv_accept(server, reinterpret_cast<uv_stream_t *>(socket.get())) == 0) {
-        auto client = new Client(this, std::move(socket));
-        m_Clients.emplace_back(client);
-
-        // If for whatever reason uv_tcp_getpeername failed (happens...
-        // somehow?)
-        if (client->GetIP()[0] == '\0') {
-            client->Destroy();
-        }
-    }
-}
-
-auto Server::NotifyClientPreDestroyed(Client *client)
-    -> std::unique_ptr<Client> {
-    for (auto it = m_Clients.begin(); it != m_Clients.end(); ++it) {
-        if (it->get() == client) {
-            std::unique_ptr<Client> r = std::move(*it);
-            *it = std::move(m_Clients.back());
-            m_Clients.pop_back();
-            return r;
-        }
-    }
-
-    assert(false);
-    return {};
-}
-
 //===============================================================================
 
 auto main() -> int {
     static intptr_t userID = 0;
 
-    Server s{uv_default_loop()};
+    Server server{uv_default_loop()};
 
-    // I recommend against setting these limits, they're way too high and allow
-    // easy DDoSes. Use the default settings. These are just here to pass tests
-    s.SetMaxMessageSize(static_cast<size_t>(256 * 1024 * 1024)); // 256 MB
+    // I recommend against setting these limits, they're way too high and
+    // allow easy DDoSes. Use the default settings. These are just here to
+    // pass tests
+    server.SetMaxMessageSize(static_cast<size_t>(256 * 1024 * 1024)); // 256 MB
 
-    s.SetClientConnectedCallback([](Client *client, HTTPRequest &) {
+    server.SetClientConnectedCallback([](Client *client, HTTPRequest &) {
         client->SetUserData((void *) ++userID);
         LOG_DEBUG("Client {} connected", userID);
     });
 
-    s.SetClientDisconnectedCallback([](Client *client) {
+    server.SetClientDisconnectedCallback([](Client *client) {
         LOG_DEBUG("Client {} disconnected", client->GetUserData());
     });
 
-    s.SetClientDataCallback(
+    server.SetClientDataCallback(
         [](Client *client, char *data, size_t len, int opcode) {
             LOG_DEBUG("Received: {}", std::string_view{data, len});
             client->Send(data, len, opcode);
         });
 
-    s.SetHTTPCallback([](HTTPRequest &req, HTTPResponse &res) {
+    server.SetHTTPCallback([](HTTPRequest &req, HTTPResponse &resp) {
         std::stringstream ss;
         ss << "Hi, you issued a " << req.method << " to " << req.path << "\r\n";
         ss << "Headers:\r\n";
@@ -2089,28 +2083,10 @@ auto main() -> int {
             ss << key << ": " << value << "\r\n";
         });
 
-        res.send(ss.str());
+        resp.send(ss.str());
     });
 
-    // uv_timer_t timer;
-    // uv_timer_init(uv_default_loop(), &timer);
-    // timer.data = &s;
-    // uv_timer_start(
-    //     &timer,
-    //     [](uv_timer_t *timer) {
-    //         // if (quit != 0) {
-    //         puts("Waiting for clients to disconnect, send another SIGINT "
-    //              "to force quit");
-    //         auto &s = *static_cast<Server *>(timer->data);
-    //         s.StopListening();
-    //         uv_timer_stop(timer);
-    //         uv_close(reinterpret_cast<uv_handle_t *>(timer), nullptr);
-    //         // }
-    //     },
-    //     10,
-    //     10);
-    //
-    s.Listen(3000);
+    server.Listen(3000);
 
     LOG_DEBUG("Listening on :3000 ...");
     uv_run(uv_default_loop(), UV_RUN_DEFAULT);
