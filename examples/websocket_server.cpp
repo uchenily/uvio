@@ -572,10 +572,10 @@ public:
     // and insecure connections at that port,
     //       sniffing the first byte to figure out whether it's secure or not
     Server(uv_loop_t *loop, SSL_CTX *ctx = nullptr)
-        : m_pLoop(loop)
-        , m_pSSLContext(ctx) {
+        : loop_(loop)
+        , ssl_ctx_(ctx) {
 
-        m_fnCheckConnection = [](Client *, HTTPRequest &req) -> bool {
+        CheckConnection_cb = [](Client *, HTTPRequest &req) -> bool {
             auto host = req.headers.Get("host");
             if (!host) {
                 return true; // No host header, default to accept
@@ -598,14 +598,14 @@ public:
     }
 
     auto Listen(int port, bool ipv4Only = false) -> bool {
-        if (m_Server) {
+        if (handle_) {
             return false;
         }
 
         signal(SIGPIPE, SIG_IGN);
 
         auto server = SocketHandle{new uv_tcp_t};
-        uv_tcp_init_ex(m_pLoop, server.get(), ipv4Only ? AF_INET : AF_INET6);
+        uv_tcp_init_ex(loop_, server.get(), ipv4Only ? AF_INET : AF_INET6);
         server->data = this;
 
         struct sockaddr_storage addr;
@@ -648,22 +648,22 @@ public:
             return false;
         }
 
-        m_Server = std::move(server);
+        handle_ = std::move(server);
         return true;
     }
 
     void StopListening() {
         // Just in case we have more logic in the future
-        if (!m_Server) {
+        if (!handle_) {
             return;
         }
-        m_Server.reset();
+        handle_.reset();
     }
 
     void DestroyClients() {
         // Clients will erase themselves from this vector
-        while (!m_Clients.empty()) {
-            m_Clients.back()->Destroy();
+        while (!clients_.empty()) {
+            clients_.back()->Destroy();
         }
     }
 
@@ -671,7 +671,7 @@ public:
     // secure connection or not, once we receive the very first byte from the
     // client
     void SetCheckTCPConnectionCallback(CheckTCPConnectionFn v) {
-        m_fnCheckTCPConnection = v;
+        CheckTCPConnection_cb = v;
     }
 
     // This callback is called when the client is trying to connect using
@@ -679,19 +679,19 @@ public:
     // it matches the Host It's likely you wanna change this check if your
     // websocket server is in a different domain.
     void SetCheckConnectionCallback(CheckConnectionFn v) {
-        m_fnCheckConnection = v;
+        CheckConnection_cb = v;
     }
 
     // This is called instead of CheckConnection for connections using the
     // alternative protocol (if enabled)
     void SetCheckAlternativeConnectionCallback(CheckAlternativeConnectionFn v) {
-        m_fnCheckAlternativeConnection = v;
+        CheckAlternativeConnection_cb = v;
     }
 
     // This callback is called when a client establishes a connection (after
     // websocket handshake) This is paired with the disconnected callback
     void SetClientConnectedCallback(ClientConnectedFn v) {
-        m_fnClientConnected = v;
+        ClientConnected_cb = v;
     }
 
     // This callback is called when a client disconnects
@@ -701,13 +701,13 @@ public:
     // connected might lead to weird results. In practice, just set it once and
     // forget about it.
     void SetClientDisconnectedCallback(ClientDisconnectedFn v) {
-        m_fnClientDisconnected = v;
+        ClientDisconnected_cb = v;
     }
 
     // This callback is called when the client receives a data frame
     // Note that both text and binary op codes end up here
     void SetClientDataCallback(ClientDataFn v) {
-        m_fnClientData = v;
+        ClientData_cb = v;
     }
 
     // This callback is called when a normal http request is received
@@ -716,26 +716,26 @@ public:
     // it will be 200 Connections that call this callback never lead to a
     // connection
     void SetHTTPCallback(HTTPRequestFn v) {
-        m_fnHTTPRequest = v;
+        HTTPRequest_cb = v;
     }
 
     auto GetSSLContext() const -> SSL_CTX * {
-        return m_pSSLContext;
+        return ssl_ctx_;
     }
 
     inline void SetUserData(void *v) {
-        m_pUserData = v;
+        data_ = v;
     }
     inline auto GetUserData() const -> void * {
-        return m_pUserData;
+        return data_;
     }
 
     // Adjusts how much we're willing to accept from clients
     // Note: this can only be set while we don't have clients (preferably before
     // listening)
     inline void SetMaxMessageSize(size_t v) {
-        assert(m_Clients.empty());
-        m_iMaxMessageSize = v;
+        assert(clients_.empty());
+        max_message_size_ = v;
     }
 
     // Alternative protocol means that the client sends a 0x00, and we skip all
@@ -744,20 +744,20 @@ public:
     // always binary In the alternative protocol, clients and servers send the
     // packet length as a Little Endian uint32, then its contents
     inline void SetAllowAlternativeProtocol(bool v) {
-        m_bAllowAlternativeProtocol = v;
+        allow_alternative_protocol_ = v;
     }
     inline auto GetAllowAlternativeProtocol() const -> bool {
-        return m_bAllowAlternativeProtocol;
+        return allow_alternative_protocol_;
     }
 
     void Ref() const {
-        if (m_Server) {
-            uv_ref(reinterpret_cast<uv_handle_t *>(m_Server.get()));
+        if (handle_) {
+            uv_ref(reinterpret_cast<uv_handle_t *>(handle_.get()));
         }
     }
     void Unref() const {
-        if (m_Server) {
-            uv_unref(reinterpret_cast<uv_handle_t *>(m_Server.get()));
+        if (handle_) {
+            uv_unref(reinterpret_cast<uv_handle_t *>(handle_.get()));
         }
     }
 
@@ -770,14 +770,14 @@ public:
         }
 
         SocketHandle socket{new uv_tcp_t};
-        uv_tcp_init(m_pLoop, socket.get());
+        uv_tcp_init(loop_, socket.get());
 
         socket->data = nullptr;
 
         if (uv_accept(server, reinterpret_cast<uv_stream_t *>(socket.get()))
             == 0) {
             auto client = new Client(this, std::move(socket));
-            m_Clients.emplace_back(client);
+            clients_.emplace_back(client);
 
             // If for whatever reason uv_tcp_getpeername failed (happens...
             // somehow?)
@@ -788,17 +788,17 @@ public:
     }
 
     void NotifyClientInit(Client *client, HTTPRequest &req) const {
-        if (m_fnClientConnected) {
-            m_fnClientConnected(client, req);
+        if (ClientConnected_cb) {
+            ClientConnected_cb(client, req);
         }
     }
 
     auto NotifyClientPreDestroyed(Client *client) -> std::unique_ptr<Client> {
-        for (auto it = m_Clients.begin(); it != m_Clients.end(); ++it) {
+        for (auto it = clients_.begin(); it != clients_.end(); ++it) {
             if (it->get() == client) {
                 std::unique_ptr<Client> r = std::move(*it);
-                *it = std::move(m_Clients.back());
-                m_Clients.pop_back();
+                *it = std::move(clients_.back());
+                clients_.pop_back();
                 return r;
             }
         }
@@ -809,29 +809,26 @@ public:
 
     void
     NotifyClientData(Client *client, char *data, size_t len, int opcode) const {
-        if (m_fnClientData) {
-            m_fnClientData(client, data, len, opcode);
+        if (ClientData_cb) {
+            ClientData_cb(client, data, len, opcode);
         }
     }
 
-    uv_loop_t                           *m_pLoop;
-    SocketHandle                         m_Server;
-    SSL_CTX                             *m_pSSLContext;
-    void                                *m_pUserData = nullptr;
-    std::vector<std::unique_ptr<Client>> m_Clients;
-    bool                                 m_bAllowAlternativeProtocol = false;
+    uv_loop_t                           *loop_;
+    SocketHandle                         handle_;
+    SSL_CTX                             *ssl_ctx_;
+    void                                *data_{nullptr};
+    std::vector<std::unique_ptr<Client>> clients_;
+    bool                                 allow_alternative_protocol_{false};
+    size_t max_message_size_{static_cast<size_t>(16 * 1024)};
 
-    CheckTCPConnectionFn         m_fnCheckTCPConnection = nullptr;
-    CheckConnectionFn            m_fnCheckConnection = nullptr;
-    CheckAlternativeConnectionFn m_fnCheckAlternativeConnection = nullptr;
-    ClientConnectedFn            m_fnClientConnected = nullptr;
-    ClientDisconnectedFn         m_fnClientDisconnected = nullptr;
-    ClientDataFn                 m_fnClientData = nullptr;
-    HTTPRequestFn                m_fnHTTPRequest = nullptr;
-
-    size_t m_iMaxMessageSize = static_cast<size_t>(16 * 1024);
-
-    friend class Client;
+    CheckTCPConnectionFn         CheckTCPConnection_cb = nullptr;
+    CheckConnectionFn            CheckConnection_cb = nullptr;
+    CheckAlternativeConnectionFn CheckAlternativeConnection_cb = nullptr;
+    ClientConnectedFn            ClientConnected_cb = nullptr;
+    ClientDisconnectedFn         ClientDisconnected_cb = nullptr;
+    ClientDataFn                 ClientData_cb = nullptr;
+    HTTPRequestFn                HTTPRequest_cb = nullptr;
 };
 
 namespace detail {
@@ -1096,7 +1093,7 @@ void Client::Destroy() {
     auto req = new ShutdownRequest();
     req->socket = std::move(m_Socket);
     req->client = std::move(myself);
-    req->cb = m_pServer->m_fnClientDisconnected;
+    req->cb = m_pServer->ClientDisconnected_cb;
 
     m_pServer = nullptr;
 
@@ -1312,15 +1309,15 @@ void Client::OnRawSocketData(char *data, size_t len) {
 
         if (m_pServer->GetSSLContext() != nullptr
             && (data[0] == 0x16 || static_cast<uint8_t>(data[0]) == 0x80)) {
-            if (m_pServer->m_fnCheckTCPConnection
-                && !m_pServer->m_fnCheckTCPConnection(GetIP(), true)) {
+            if (m_pServer->CheckTCPConnection_cb
+                && !m_pServer->CheckTCPConnection_cb(GetIP(), true)) {
                 return Destroy();
             }
 
             InitSecure();
         } else {
-            if (m_pServer->m_fnCheckTCPConnection
-                && !m_pServer->m_fnCheckTCPConnection(GetIP(), false)) {
+            if (m_pServer->CheckTCPConnection_cb
+                && !m_pServer->CheckTCPConnection_cb(GetIP(), false)) {
                 return Destroy();
             }
         }
@@ -1345,7 +1342,7 @@ void Client::OnSocketData(char *data, size_t len) {
     }
 
     // This gives us an extra byte just in case
-    if (m_Buffer.size() + len + 1 >= m_pServer->m_iMaxMessageSize) {
+    if (m_Buffer.size() + len + 1 >= m_pServer->max_message_size_) {
         if (m_bHasCompletedHandshake) {
             Close(1009, "Message too large");
         }
@@ -1403,8 +1400,8 @@ void Client::OnSocketData(char *data, size_t len) {
         m_bUsingAlternativeProtocol = true;
         Consume(1);
 
-        if (!m_pServer->m_fnCheckAlternativeConnection
-            || m_pServer->m_fnCheckAlternativeConnection(this)) {
+        if (!m_pServer->CheckAlternativeConnection_cb
+            || m_pServer->CheckAlternativeConnection_cb(this)) {
             Destroy();
             return;
         }
@@ -1546,8 +1543,8 @@ void Client::OnSocketData(char *data, size_t len) {
 
                 HTTPResponse res;
 
-                if (m_pServer->m_fnHTTPRequest) {
-                    m_pServer->m_fnHTTPRequest(req, res);
+                if (m_pServer->HTTPRequest_cb) {
+                    m_pServer->HTTPRequest_cb(req, res);
                 }
 
                 if (res.statusCode == 0) {
@@ -1615,8 +1612,8 @@ void Client::OnSocketData(char *data, size_t len) {
 
         std::string securityKey = std::string(*websocketKey);
 
-        if (m_pServer->m_fnCheckConnection
-            && !m_pServer->m_fnCheckConnection(this, req)) {
+        if (m_pServer->CheckConnection_cb
+            && !m_pServer->CheckConnection_cb(this, req)) {
             Write("HTTP/1.1 403 Forbidden\r\n\r\n");
             Destroy();
             return;
@@ -1700,7 +1697,7 @@ void Client::OnSocketData(char *data, size_t len) {
                      << 16)
                   | (static_cast<uint32_t>(static_cast<uint8_t>(buffer[3]))
                      << 24);
-            if (frameLength > m_pServer->m_iMaxMessageSize) {
+            if (frameLength > m_pServer->max_message_size_) {
                 return Close(1002, "Too large");
             }
             if (buffer.size() < 4 + frameLength) {
@@ -1822,7 +1819,7 @@ void Client::OnSocketData(char *data, size_t len) {
                 }
 
                 if (m_FrameBuffer.size() + frameLength
-                    >= m_pServer->m_iMaxMessageSize) {
+                    >= m_pServer->max_message_size_) {
                     return Close(1009, "Message too large");
                 }
 
