@@ -41,6 +41,10 @@ run TARGET:
 test TEST:
     meson test -C build {{TEST}} --verbose
 
+# run run-clang-tidy on specific file
+clang-fix FILE:
+    run-clang-tidy -fix -p build {{FILE}}
+
 # run pre-commit
 pre-commit:
     pre-commit run -a
