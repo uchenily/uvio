@@ -13,11 +13,9 @@ public:
         co_return co_await static_cast<Derived *>(this)->decode(reader);
     }
 
-    template <typename Ret, typename Writer>
-    auto Encode(std::span<const char> message, Writer &writer)
-        -> Task<Result<Ret>> {
-        co_return co_await static_cast<Derived *>(this)->encode(message,
-                                                                writer);
+    template <typename Ret, typename Arg, typename Writer>
+    auto Encode(Arg arg, Writer &writer) -> Task<Result<Ret>> {
+        co_return co_await static_cast<Derived *>(this)->encode(arg, writer);
     }
 };
 
