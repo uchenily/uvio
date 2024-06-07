@@ -788,12 +788,6 @@ public:
         }
     }
 
-    void NotifyConnectionInit(HTTPRequest &req) const {
-        if (ConnectionConnected_cb) {
-            ConnectionConnected_cb(req);
-        }
-    }
-
     auto NotifyConnectionPreDestroyed(Connection *conn)
         -> std::unique_ptr<Connection> {
         for (auto it = connections_.begin(); it != connections_.end(); ++it) {
@@ -807,15 +801,6 @@ public:
 
         assert(false);
         return {};
-    }
-
-    void NotifyConnectionData(Connection *conn,
-                              char       *data,
-                              size_t      len,
-                              int         opcode) const {
-        if (ConnectionData_cb) {
-            ConnectionData_cb(conn, data, len, opcode);
-        }
     }
 
     uv_loop_t                               *loop_;
@@ -1421,7 +1406,9 @@ void Connection::OnSocketData(char *data, size_t len) {
             headers,
         };
 
-        m_pServer->NotifyConnectionInit(req);
+        if (m_pServer->ConnectionConnected_cb) {
+            m_pServer->ConnectionConnected_cb(req);
+        }
     } else if (!m_bHasCompletedHandshake) {
         // HTTP headers not done yet, wait
         auto endOfHeaders = buffer.find("\r\n\r\n");
@@ -1677,7 +1664,9 @@ void Connection::OnSocketData(char *data, size_t len) {
 
         m_bHasCompletedHandshake = true;
 
-        m_pServer->NotifyConnectionInit(req);
+        if (m_pServer->ConnectionConnected_cb) {
+            m_pServer->ConnectionConnected_cb(req);
+        }
 
         m_Buffer.clear();
 
@@ -1930,7 +1919,9 @@ void Connection::ProcessDataFrame(uint8_t opcode, char *data, size_t len) {
             return Close(1007, "Invalid UTF-8 in text frame");
         }
 
-        m_pServer->NotifyConnectionData(this, data, len, opcode);
+        if (m_pServer->ConnectionData_cb) {
+            m_pServer->ConnectionData_cb(this, data, len, opcode);
+        }
         break;
 
     default:
