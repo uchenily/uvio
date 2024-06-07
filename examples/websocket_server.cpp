@@ -354,7 +354,7 @@ private:
     BIO *m_WriteBIO;
 };
 
-class Client;
+class Connection;
 class Server;
 namespace detail {
 struct Corker;
@@ -407,7 +407,7 @@ public:
 private:
     std::vector<std::pair<std::string_view, std::string_view>> m_Headers;
 
-    friend class Client;
+    friend class Connection;
     friend class Server;
 };
 
@@ -446,15 +446,15 @@ private:
     std::string                             body;
     std::multimap<std::string, std::string> headers;
 
-    friend class Client;
+    friend class Connection;
 };
 
-class Client {
+class Connection {
     enum { MAX_HEADER_SIZE = 10 };
     enum : unsigned char { NO_FRAMES = 0 };
 
 public:
-    ~Client();
+    ~Connection();
 
     // If reasonLen is -1, it'll use strlen
     void
@@ -484,8 +484,8 @@ public:
         return m_IP;
     }
 
-    inline auto HasClientRequestedClose() const -> bool {
-        return m_bClientRequestedClose;
+    inline auto HasConnectionRequestedClose() const -> bool {
+        return m_bConnectionRequestedClose;
     }
 
 private:
@@ -495,10 +495,10 @@ private:
         size_t                  len;
     };
 
-    Client(Server *server, SocketHandle socket);
+    Connection(Server *server, SocketHandle socket);
 
-    Client(const Client &other) = delete;
-    auto operator=(Client &other) -> Client & = delete;
+    Connection(const Connection &other) = delete;
+    auto operator=(Connection &other) -> Connection & = delete;
 
     auto GetDataFrameHeaderSize(size_t len) -> size_t;
     void WriteDataFrameHeader(uint8_t opcode, size_t len, char *headerStart);
@@ -541,7 +541,7 @@ private:
     bool         m_bHasCompletedHandshake = false;
     bool         m_bIsClosing = false;
     bool         m_bUsingAlternativeProtocol = false;
-    bool         m_bClientRequestedClose = false;
+    bool         m_bConnectionRequestedClose = false;
     char         m_IP[46];
 
     std::unique_ptr<TLS> m_pTLS;
@@ -553,17 +553,17 @@ private:
 
     friend class Server;
     friend struct detail::Corker;
-    friend class std::unique_ptr<Client>;
+    friend class std::unique_ptr<Connection>;
 };
 
 class Server {
 public:
     using CheckSSLConnectionFn = bool (*)(std::string_view, bool);
     using CheckConnectionFn = bool (*)(HTTPRequest &);
-    using CheckAlternativeConnectionFn = bool (*)(Client *);
-    using ClientConnectedFn = void (*)(HTTPRequest &);
-    using ClientDisconnectedFn = void (*)();
-    using ClientDataFn = void (*)(Client *, char *, size_t, int);
+    using CheckAlternativeConnectionFn = bool (*)(Connection *);
+    using ConnectionConnectedFn = void (*)(HTTPRequest &);
+    using ConnectionDisconnectedFn = void (*)();
+    using ConnectionDataFn = void (*)(Connection *, char *, size_t, int);
     using HTTPRequestFn = void (*)(HTTPRequest &, HTTPResponse &);
 
 public:
@@ -594,7 +594,7 @@ public:
     auto operator=(const Server &other) -> Server & = delete;
     ~Server() {
         StopListening();
-        DestroyClients();
+        DestroyConnections();
     }
 
     auto Listen(int port, bool ipv4Only = false) -> bool {
@@ -660,10 +660,10 @@ public:
         handle_.reset();
     }
 
-    void DestroyClients() {
-        // Clients will erase themselves from this vector
-        while (!clients_.empty()) {
-            clients_.back()->Destroy();
+    void DestroyConnections() {
+        // Connections will erase themselves from this vector
+        while (!connections_.empty()) {
+            connections_.back()->Destroy();
         }
     }
 
@@ -691,8 +691,8 @@ public:
 
     // This callback is called when a client establishes a connection (after
     // websocket handshake) This is paired with the disconnected callback
-    void SetClientConnectedCallback(ClientConnectedFn v) {
-        ClientConnected_cb = v;
+    void SetConnectionConnectedCallback(ConnectionConnectedFn v) {
+        ConnectionConnected_cb = v;
     }
 
     // This callback is called when a client disconnects
@@ -701,14 +701,14 @@ public:
     // value when you call Destroy on them, so changing this after clients are
     // connected might lead to weird results. In practice, just set it once and
     // forget about it.
-    void SetClientDisconnectedCallback(ClientDisconnectedFn v) {
-        ClientDisconnected_cb = v;
+    void SetConnectionDisconnectedCallback(ConnectionDisconnectedFn v) {
+        ConnectionDisconnected_cb = v;
     }
 
     // This callback is called when the client receives a data frame
     // Note that both text and binary op codes end up here
-    void SetClientDataCallback(ClientDataFn v) {
-        ClientData_cb = v;
+    void SetConnectionDataCallback(ConnectionDataFn v) {
+        ConnectionData_cb = v;
     }
 
     // This callback is called when a normal http request is received
@@ -735,7 +735,7 @@ public:
     // Note: this can only be set while we don't have clients (preferably before
     // listening)
     inline void SetMaxMessageSize(size_t v) {
-        assert(clients_.empty());
+        assert(connections_.empty());
         max_message_size_ = v;
     }
 
@@ -777,29 +777,30 @@ public:
 
         if (uv_accept(server, reinterpret_cast<uv_stream_t *>(socket.get()))
             == 0) {
-            auto client = new Client(this, std::move(socket));
-            clients_.emplace_back(client);
+            auto conn = new Connection(this, std::move(socket));
+            connections_.emplace_back(conn);
 
             // If for whatever reason uv_tcp_getpeername failed (happens...
             // somehow?)
-            if (client->GetIP()[0] == '\0') {
-                client->Destroy();
+            if (conn->GetIP()[0] == '\0') {
+                conn->Destroy();
             }
         }
     }
 
-    void NotifyClientInit(HTTPRequest &req) const {
-        if (ClientConnected_cb) {
-            ClientConnected_cb(req);
+    void NotifyConnectionInit(HTTPRequest &req) const {
+        if (ConnectionConnected_cb) {
+            ConnectionConnected_cb(req);
         }
     }
 
-    auto NotifyClientPreDestroyed(Client *client) -> std::unique_ptr<Client> {
-        for (auto it = clients_.begin(); it != clients_.end(); ++it) {
-            if (it->get() == client) {
-                std::unique_ptr<Client> r = std::move(*it);
-                *it = std::move(clients_.back());
-                clients_.pop_back();
+    auto NotifyConnectionPreDestroyed(Connection *conn)
+        -> std::unique_ptr<Connection> {
+        for (auto it = connections_.begin(); it != connections_.end(); ++it) {
+            if (it->get() == conn) {
+                std::unique_ptr<Connection> r = std::move(*it);
+                *it = std::move(connections_.back());
+                connections_.pop_back();
                 return r;
             }
         }
@@ -808,27 +809,29 @@ public:
         return {};
     }
 
-    void
-    NotifyClientData(Client *client, char *data, size_t len, int opcode) const {
-        if (ClientData_cb) {
-            ClientData_cb(client, data, len, opcode);
+    void NotifyConnectionData(Connection *conn,
+                              char       *data,
+                              size_t      len,
+                              int         opcode) const {
+        if (ConnectionData_cb) {
+            ConnectionData_cb(conn, data, len, opcode);
         }
     }
 
-    uv_loop_t                           *loop_;
-    SocketHandle                         handle_;
-    SSL_CTX                             *ssl_ctx_;
-    void                                *data_{nullptr};
-    std::vector<std::unique_ptr<Client>> clients_;
-    bool                                 allow_alternative_protocol_{false};
+    uv_loop_t                               *loop_;
+    SocketHandle                             handle_;
+    SSL_CTX                                 *ssl_ctx_;
+    void                                    *data_{nullptr};
+    std::vector<std::unique_ptr<Connection>> connections_;
+    bool                                     allow_alternative_protocol_{false};
     size_t max_message_size_{static_cast<size_t>(16 * 1024)};
 
     CheckSSLConnectionFn         CheckSSLConnection_cb = nullptr;
     CheckConnectionFn            CheckConnection_cb = nullptr;
     CheckAlternativeConnectionFn CheckAlternativeConnection_cb = nullptr;
-    ClientConnectedFn            ClientConnected_cb = nullptr;
-    ClientDisconnectedFn         ClientDisconnected_cb = nullptr;
-    ClientDataFn                 ClientData_cb = nullptr;
+    ConnectionConnectedFn        ConnectionConnected_cb = nullptr;
+    ConnectionDisconnectedFn     ConnectionDisconnected_cb = nullptr;
+    ConnectionDataFn             ConnectionData_cb = nullptr;
     HTTPRequestFn                HTTPRequest_cb = nullptr;
 };
 
@@ -925,14 +928,14 @@ auto HeaderContains(std::string_view header, std::string_view substring)
 }
 
 struct Corker {
-    Client &client;
+    Connection &conn_;
 
-    Corker(Client &client)
-        : client(client) {
-        client.Cork(true);
+    Corker(Connection &conn)
+        : conn_(conn) {
+        conn.Cork(true);
     }
     ~Corker() {
-        client.Cork(false);
+        conn_.Cork(false);
     }
 };
 } // namespace detail
@@ -1003,7 +1006,7 @@ struct DataFrameHeader {
     }
 };
 
-Client::Client(Server *server, SocketHandle socket)
+Connection::Connection(Server *server, SocketHandle socket)
     : m_pServer(server)
     , m_Socket(std::move(socket)) {
     m_Socket->data = this;
@@ -1053,14 +1056,14 @@ Client::Client(Server *server, SocketHandle socket)
             buf->len = suggested_size;
         },
         [](uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
-            auto client = static_cast<Client *>(stream->data);
+            auto conn = static_cast<Connection *>(stream->data);
 
-            if (client != nullptr) {
+            if (conn != nullptr) {
                 if (nread < 0) {
-                    client->Destroy();
+                    conn->Destroy();
                 } else if (nread > 0) {
-                    client->OnRawSocketData(buf->base,
-                                            static_cast<size_t>(nread));
+                    conn->OnRawSocketData(buf->base,
+                                          static_cast<size_t>(nread));
                 }
             }
 
@@ -1070,11 +1073,11 @@ Client::Client(Server *server, SocketHandle socket)
         });
 }
 
-Client::~Client() {
+Connection::~Connection() {
     assert(!m_Socket);
 }
 
-void Client::Destroy() {
+void Connection::Destroy() {
     if (!m_Socket) {
         return;
     }
@@ -1083,37 +1086,39 @@ void Client::Destroy() {
 
     m_Socket->data = nullptr;
 
-    auto myself = m_pServer->NotifyClientPreDestroyed(this);
+    auto myself = m_pServer->NotifyConnectionPreDestroyed(this);
 
     struct ShutdownRequest : uv_shutdown_t {
-        SocketHandle                 socket;
-        std::unique_ptr<Client>      client;
-        Server::ClientDisconnectedFn cb;
+        SocketHandle                     handle_;
+        std::unique_ptr<Connection>      conn_;
+        Server::ConnectionDisconnectedFn disconnected_cb_;
     };
 
     auto req = new ShutdownRequest();
-    req->socket = std::move(m_Socket);
-    req->client = std::move(myself);
-    req->cb = m_pServer->ClientDisconnected_cb;
+    req->handle_ = std::move(m_Socket);
+    req->conn_ = std::move(myself);
+    req->disconnected_cb_ = m_pServer->ConnectionDisconnected_cb;
 
     m_pServer = nullptr;
 
     static auto cb = [](uv_shutdown_t *reqq, int) {
         auto req = (ShutdownRequest *) reqq;
 
-        if (req->cb && req->client->m_bHasCompletedHandshake) {
-            req->cb();
+        if (req->disconnected_cb_ && req->conn_->m_bHasCompletedHandshake) {
+            req->disconnected_cb_();
         }
 
         delete req;
     };
 
-    if (uv_shutdown(req, reinterpret_cast<uv_stream_t *>(req->socket.get()), cb)
+    if (uv_shutdown(req,
+                    reinterpret_cast<uv_stream_t *>(req->handle_.get()),
+                    cb)
         != 0) {
         // Shutdown failed, but we have to delay the destruction to the next
         // event loop
         auto timer = new uv_timer_t;
-        uv_timer_init(req->socket->loop, timer);
+        uv_timer_init(req->handle_->loop, timer);
         timer->data = req;
         uv_timer_start(
             timer,
@@ -1131,7 +1136,7 @@ void Client::Destroy() {
 }
 
 template <size_t N>
-void Client::WriteRaw(uv_buf_t bufs[N]) {
+void Connection::WriteRaw(uv_buf_t bufs[N]) {
     if (!m_Socket) {
         return;
     }
@@ -1184,14 +1189,14 @@ void Client::WriteRaw(uv_buf_t bufs[N]) {
     }
 }
 
-void Client::WriteRawQueue(std::unique_ptr<char[]> data, size_t len) {
+void Connection::WriteRawQueue(std::unique_ptr<char[]> data, size_t len) {
     if (!m_Socket) {
         return;
     }
 
     struct CustomWriteRequest {
         uv_write_t              req;
-        Client                 *client;
+        Connection             *conn;
         std::unique_ptr<char[]> data;
     };
 
@@ -1200,7 +1205,7 @@ void Client::WriteRawQueue(std::unique_ptr<char[]> data, size_t len) {
     buf.len = len;
 
     auto request = new CustomWriteRequest();
-    request->client = this;
+    request->conn = this;
     request->data = std::move(data);
 
     if (uv_write(&request->req,
@@ -1211,7 +1216,7 @@ void Client::WriteRawQueue(std::unique_ptr<char[]> data, size_t len) {
                      auto request = reinterpret_cast<CustomWriteRequest *>(req);
 
                      if (status < 0) {
-                         request->client->Destroy();
+                         request->conn->Destroy();
                      }
 
                      delete request;
@@ -1223,7 +1228,7 @@ void Client::WriteRawQueue(std::unique_ptr<char[]> data, size_t len) {
 }
 
 template <size_t N>
-void Client::Write(uv_buf_t bufs[N]) {
+void Connection::Write(uv_buf_t bufs[N]) {
     if (!m_Socket) {
         return;
     }
@@ -1239,20 +1244,20 @@ void Client::Write(uv_buf_t bufs[N]) {
     }
 }
 
-void Client::Write(const char *data, size_t len) {
+void Connection::Write(const char *data, size_t len) {
     uv_buf_t bufs[1];
     bufs[0].base = const_cast<char *>(data);
     bufs[0].len = len;
     Write<1>(bufs);
 }
 
-void Client::Write(const char *data) {
+void Connection::Write(const char *data) {
     Write(data, strlen(data));
 }
 
-void Client::WriteDataFrameHeader(uint8_t opcode,
-                                  size_t  len,
-                                  char   *headerStart) {
+void Connection::WriteDataFrameHeader(uint8_t opcode,
+                                      size_t  len,
+                                      char   *headerStart) {
     DataFrameHeader header{headerStart};
 
     header.reset();
@@ -1283,7 +1288,7 @@ void Client::WriteDataFrameHeader(uint8_t opcode,
     }
 }
 
-auto Client::GetDataFrameHeaderSize(size_t len) -> size_t {
+auto Connection::GetDataFrameHeaderSize(size_t len) -> size_t {
     if (len >= 126) {
         if (len > UINT16_MAX) {
             return 10;
@@ -1295,7 +1300,7 @@ auto Client::GetDataFrameHeaderSize(size_t len) -> size_t {
     }
 }
 
-void Client::OnRawSocketData(char *data, size_t len) {
+void Connection::OnRawSocketData(char *data, size_t len) {
     if (len == 0) {
         return;
     }
@@ -1337,7 +1342,7 @@ void Client::OnRawSocketData(char *data, size_t len) {
     }
 }
 
-void Client::OnSocketData(char *data, size_t len) {
+void Connection::OnSocketData(char *data, size_t len) {
     if (m_pServer == nullptr) {
         return;
     }
@@ -1416,7 +1421,7 @@ void Client::OnSocketData(char *data, size_t len) {
             headers,
         };
 
-        m_pServer->NotifyClientInit(req);
+        m_pServer->NotifyConnectionInit(req);
     } else if (!m_bHasCompletedHandshake) {
         // HTTP headers not done yet, wait
         auto endOfHeaders = buffer.find("\r\n\r\n");
@@ -1672,7 +1677,7 @@ void Client::OnSocketData(char *data, size_t len) {
 
         m_bHasCompletedHandshake = true;
 
-        m_pServer->NotifyClientInit(req);
+        m_pServer->NotifyConnectionInit(req);
 
         m_Buffer.clear();
 
@@ -1721,9 +1726,9 @@ void Client::OnSocketData(char *data, size_t len) {
                 return Close(1002, "Reserved bit used");
             }
 
-            // Clients MUST mask their headers
+            // Connections MUST mask their headers
             if (!header.mask()) {
-                return Close(1002, "Clients must mask their payload");
+                return Close(1002, "Connections must mask their payload");
             }
             assert(header.mask());
 
@@ -1847,7 +1852,7 @@ void Client::OnSocketData(char *data, size_t len) {
     // Unreachable
 }
 
-void Client::ProcessDataFrame(uint8_t opcode, char *data, size_t len) {
+void Connection::ProcessDataFrame(uint8_t opcode, char *data, size_t len) {
     switch (opcode) {
     case 9: // Ping
         if (m_bIsClosing) {
@@ -1860,7 +1865,7 @@ void Client::ProcessDataFrame(uint8_t opcode, char *data, size_t len) {
         break; // Pong
 
     case 8: // Close
-        m_bClientRequestedClose = true;
+        m_bConnectionRequestedClose = true;
         if (m_bIsClosing) {
             Destroy();
         } else {
@@ -1925,7 +1930,7 @@ void Client::ProcessDataFrame(uint8_t opcode, char *data, size_t len) {
             return Close(1007, "Invalid UTF-8 in text frame");
         }
 
-        m_pServer->NotifyClientData(this, data, len, opcode);
+        m_pServer->NotifyConnectionData(this, data, len, opcode);
         break;
 
     default:
@@ -1933,7 +1938,7 @@ void Client::ProcessDataFrame(uint8_t opcode, char *data, size_t len) {
     }
 }
 
-void Client::Close(uint16_t code, const char *reason, size_t reasonLen) {
+void Connection::Close(uint16_t code, const char *reason, size_t reasonLen) {
     if (m_bIsClosing) {
         return;
     }
@@ -1969,7 +1974,7 @@ void Client::Close(uint16_t code, const char *reason, size_t reasonLen) {
     Destroy();
 }
 
-void Client::Send(const char *data, size_t len, uint8_t opcode) {
+void Connection::Send(const char *data, size_t len, uint8_t opcode) {
     if (!m_Socket) {
         return;
     }
@@ -2003,11 +2008,11 @@ void Client::Send(const char *data, size_t len, uint8_t opcode) {
     }
 }
 
-void Client::InitSecure() {
+void Connection::InitSecure() {
     m_pTLS = std::make_unique<TLS>(m_pServer->GetSSLContext());
 }
 
-void Client::FlushTLS() {
+void Connection::FlushTLS() {
     assert(m_pTLS != nullptr);
     m_pTLS->ForEachPendingWrite([&](const char *data, size_t len) {
         uv_buf_t bufs[1];
@@ -2017,7 +2022,7 @@ void Client::FlushTLS() {
     });
 }
 
-void Client::Cork(bool v) {
+void Connection::Cork(bool v) {
     if (!m_Socket) {
         return;
     }
@@ -2055,18 +2060,18 @@ auto main() -> int {
     // pass tests
     server.SetMaxMessageSize(static_cast<size_t>(256 * 1024 * 1024)); // 256 MB
 
-    server.SetClientConnectedCallback([](HTTPRequest &) {
-        LOG_DEBUG("Client connected");
+    server.SetConnectionConnectedCallback([](HTTPRequest &) {
+        LOG_DEBUG("Connection connected");
     });
 
-    server.SetClientDisconnectedCallback([]() {
-        LOG_DEBUG("Client disconnected");
+    server.SetConnectionDisconnectedCallback([]() {
+        LOG_DEBUG("Connection disconnected");
     });
 
-    server.SetClientDataCallback(
-        [](Client *client, char *data, size_t len, int opcode) {
+    server.SetConnectionDataCallback(
+        [](Connection *conn, char *data, size_t len, int opcode) {
             LOG_DEBUG("Received: {}", std::string_view{data, len});
-            client->Send(data, len, opcode);
+            conn->Send(data, len, opcode);
         });
 
     server.SetHTTPCallback([](HTTPRequest &req, HTTPResponse &resp) {
