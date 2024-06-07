@@ -36,9 +36,9 @@ public:
         co_return message;
     }
 
-    template <typename Arg, typename Writer>
-        requires std::is_same_v<Arg, std::span<const char>>
-    auto encode(Arg message, Writer &writer) -> Task<Result<void>> {
+    template <typename Writer>
+    auto encode(std::span<const char> message, Writer &writer)
+        -> Task<Result<void>> {
         uint32_t length = message.size();
         if (auto ret = co_await encode_length(length, writer); !ret) {
             co_return ret;
@@ -115,8 +115,7 @@ public:
         co_return message;
     }
 
-    template <typename Arg, typename Writer>
-        requires std::is_same_v<Arg, std::span<const char>>
+    template <typename Writer>
     auto encode(std::span<const char> message, Writer &writer)
         -> Task<Result<void>> {
         // std::array<unsigned char, 4> msg_len{};
