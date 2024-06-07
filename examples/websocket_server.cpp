@@ -559,7 +559,7 @@ private:
 class Server {
 public:
     using CheckTCPConnectionFn = bool (*)(std::string_view, bool);
-    using CheckConnectionFn = bool (*)(Client *, HTTPRequest &);
+    using CheckConnectionFn = bool (*)(HTTPRequest &);
     using CheckAlternativeConnectionFn = bool (*)(Client *);
     using ClientConnectedFn = void (*)(Client *, HTTPRequest &);
     using ClientDisconnectedFn = void (*)(Client *);
@@ -575,7 +575,7 @@ public:
         : loop_(loop)
         , ssl_ctx_(ctx) {
 
-        CheckConnection_cb = [](Client *, HTTPRequest &req) -> bool {
+        CheckConnection_cb = [](HTTPRequest &req) -> bool {
             auto host = req.headers.Get("host");
             if (!host) {
                 return true; // No host header, default to accept
@@ -674,13 +674,14 @@ public:
         CheckTCPConnection_cb = v;
     }
 
-    // This callback is called when the client is trying to connect using
-    // websockets By default, for safety, this checks the Origin and makes sure
-    // it matches the Host It's likely you wanna change this check if your
-    // websocket server is in a different domain.
-    void SetCheckConnectionCallback(CheckConnectionFn v) {
-        CheckConnection_cb = v;
-    }
+    // // This callback is called when the client is trying to connect using
+    // // websockets By default, for safety, this checks the Origin and makes
+    // sure
+    // // it matches the Host It's likely you wanna change this check if your
+    // // websocket server is in a different domain.
+    // void SetCheckConnectionCallback(CheckConnectionFn v) {
+    //     CheckConnection_cb = v;
+    // }
 
     // This is called instead of CheckConnection for connections using the
     // alternative protocol (if enabled)
@@ -1613,7 +1614,7 @@ void Client::OnSocketData(char *data, size_t len) {
         std::string securityKey = std::string(*websocketKey);
 
         if (m_pServer->CheckConnection_cb
-            && !m_pServer->CheckConnection_cb(this, req)) {
+            && !m_pServer->CheckConnection_cb(req)) {
             Write("HTTP/1.1 403 Forbidden\r\n\r\n");
             Destroy();
             return;
