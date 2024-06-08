@@ -3,20 +3,13 @@ import websockets
 
 async def client():
     async with websockets.connect('ws://localhost:8000') as channel:
-        # 发送消息
-        print('Sending: Hello, Server!')
-        await channel.send('Hello, Server!')
+        for i in range(64):
+            # 发送消息
+            message = f"message {i} transmitted via websocket"
+            await channel.send(message)
 
-        # 接收消息
-        response = await channel.recv()
-        print(f'Received: {response}')
-
-        # 发送消息
-        print('Sending: another message!')
-        await channel.send('another message!')
-
-        # 接收消息
-        response = await channel.recv()
-        print(f'Received: {response}')
+            # 接收消息
+            received = await channel.recv()
+            print(f"Received: {received}")
 
 asyncio.run(client())
