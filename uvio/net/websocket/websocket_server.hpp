@@ -6,9 +6,7 @@
 #include "uvio/debug.hpp"
 #include "uvio/net/tcp_listener.hpp"
 #include "uvio/net/websocket/websocket_frame.hpp"
-#include "uvio/net/websocket/websocket_util.hpp"
 
-#include <openssl/ssl.h>
 #include <unordered_map>
 
 namespace uvio::net::websocket {

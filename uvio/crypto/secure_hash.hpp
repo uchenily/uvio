@@ -1,5 +1,7 @@
 #pragma once
 
+#if defined(HAS_SSL)
+
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -93,3 +95,5 @@ public:
         return key;
     }
 };
+
+#endif
