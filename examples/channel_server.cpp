@@ -1,4 +1,3 @@
-#include "uvio/codec.hpp"
 #include "uvio/core.hpp"
 #include "uvio/log.hpp"
 #include "uvio/net.hpp"
