@@ -21,8 +21,8 @@ auto client() -> Task<> {
         co_return;
     }
     auto response = std::move(ret.value());
-    console.info("response [http_code={}] [body_length={}]",
-                 response.http_code,
+    console.info("response [status_code={}] [body_length={}]",
+                 response.status_code,
                  response.body.size());
     console.info("`{}`", response.body);
 }

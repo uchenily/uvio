@@ -13,8 +13,9 @@ struct HttpRequest {
 };
 
 struct HttpResponse {
-    int         http_code;
-    std::string body;
+    int              status_code;
+    http::HttpHeader headers;
+    std::string      body;
 };
 
 } // namespace uvio::net::http

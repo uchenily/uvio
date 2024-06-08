@@ -53,11 +53,11 @@ private:
         if (auto it = map_handles_.find(request.uri);
             it != map_handles_.end()) {
             it->second(request, resp);
-            resp.http_code = 200;
+            resp.status_code = 200;
         } else {
             // TODO(x)
             resp.body = "Page not found";
-            resp.http_code = 404;
+            resp.status_code = 404;
         }
 
         // HttpResponse resp{

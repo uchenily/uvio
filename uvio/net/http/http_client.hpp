@@ -22,7 +22,7 @@ class HttpClient {
         curl_socket_t                  curl_sockfd;
         CURLM                         *multi_handle_;
         std::string                    response_body_;
-        int                            response_code_{0};
+        int                            status_code_{0};
 
         Context(std::coroutine_handle<> &handle)
             : handle_{handle} {}
@@ -84,7 +84,7 @@ public:
                                           CURLINFO_RESPONSE_CODE,
                                           &response_code);
                         LOG_DEBUG("response code: {}", response_code);
-                        context->response_code_ = response_code;
+                        context->status_code_ = response_code;
 
                         curl_multi_remove_handle(context->multi_handle_,
                                                  message->easy_handle);
@@ -203,14 +203,14 @@ public:
 
         public:
             auto await_ready() const noexcept -> bool {
-                return context_.response_code_ != 0;
+                return context_.status_code_ != 0;
             }
             auto await_suspend(std::coroutine_handle<> handle) noexcept {
                 handle_ = handle;
             }
             [[nodiscard]]
             auto await_resume() const noexcept -> Result<HttpResponse> {
-                return HttpResponse{.http_code = context_.response_code_,
+                return HttpResponse{.status_code = context_.status_code_,
                                     .body = context_.response_body_};
             }
 
