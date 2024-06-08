@@ -74,8 +74,25 @@ public:
     }
 
     template <typename Writer>
-    auto encode(const http::HttpResponse &resp, Writer &writer)
+    auto encode(http::HttpResponse &resp, Writer &writer)
         -> Task<Result<void>> {
+        if (!resp.headers.find("Upgrade")) {
+            // 普通的 HTTP 请求
+            if (auto ret = co_await writer.write(std::format(
+                    "HTTP/1.0 200 OK\r\nContent-Length: {}\r\n\r\n{}",
+                    resp.body.size(),
+                    resp.body));
+                !ret) {
+                co_return unexpected{ret.error()};
+            }
+            if (auto ret = co_await writer.flush(); !ret) {
+                co_return ret;
+            }
+            co_return Result<void>{};
+        }
+
+        // Websocket 握手
+        //
         // 这里有个比较坑的地方, 如果写入的类型是 char *,
         // 那么长度会加一(结尾的\0), '\0'也会写入 buf 导致解析出问题 所以要使用
         // std::string/std::string_view, 避免使用c字符串
@@ -89,7 +106,6 @@ public:
         if (auto ret = co_await writer.flush(); !ret) {
             co_return ret;
         }
-
         co_return Result<void>{};
     }
 

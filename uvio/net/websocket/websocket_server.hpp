@@ -4,7 +4,6 @@
 #include "uvio/debug.hpp"
 #include "uvio/net/tcp_listener.hpp"
 #include "uvio/net/websocket/websocket_frame.hpp"
-#include "uvio/net/websocket/websocket_protocol.hpp"
 #include "uvio/net/websocket/websocket_util.hpp"
 
 #include <openssl/ssl.h>
@@ -25,11 +24,11 @@ public:
         , port_{port} {}
 
 public:
-    auto set_http_handler(std::string_view uri, HandlerFunc &&func) {
+    auto add_route(std::string_view uri, HandlerFunc &&func) {
         map_handles_[uri] = std::move(func);
     }
 
-    auto set_websocket_handler(WebsocketHandlerFunc &&func) {
+    auto handle_message(WebsocketHandlerFunc &&func) {
         websocket_handler_ = std::move(func);
     }
 
