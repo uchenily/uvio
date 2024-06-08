@@ -299,6 +299,29 @@ public:
 
         co_return Result<void>{};
     }
+    template <typename Writer>
+    auto encode(int x, Writer &writer) -> Task<Result<void>> {
+        auto                 message = std::string{"Close"};
+        std::array<char, 10> buf{};
+        buf[0] = static_cast<char>(0b1000'0000)
+                 | static_cast<char>(Opcode::CLOSE); // fin + close
+        buf[1] = client_side_ ? static_cast<char>(0b1000'0000) : 0; // mask
+        auto length = message.size();
+        buf[1] |= length;
+        co_await writer.write(std::span<char, 2>{buf.data(), 2});
+
+        if (client_side_) {
+            // TODO(x)
+            auto mask = std::array<char, 4>{1, 1, 1, 1};
+            co_await writer.write(mask);
+            apply_mask(message, mask);
+        }
+
+        co_await writer.write(message);
+        co_await writer.flush();
+
+        co_return Result<void>{};
+    }
 
     auto client_side() {
         client_side_ = true;
@@ -352,6 +375,11 @@ public:
     auto send(std::span<char> message) -> Task<Result<void>> {
         co_return co_await websocket_codec_.Encode<void>(message,
                                                          buffered_writer_);
+    }
+
+    [[REMEMBER_CO_AWAIT]]
+    auto close() -> Task<Result<void>> {
+        co_return co_await websocket_codec_.Encode<void>(0, buffered_writer_);
     }
 
     auto client_side() {

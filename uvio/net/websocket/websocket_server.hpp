@@ -110,6 +110,8 @@ private:
 
         co_await websocket_framed.recv();
         co_await websocket_framed.send(message);
+
+        co_await websocket_framed.close();
         co_return;
     }
 
