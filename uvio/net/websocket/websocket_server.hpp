@@ -1,6 +1,8 @@
 #pragma once
 
+#include "uvio/common/base64.hpp"
 #include "uvio/core.hpp"
+#include "uvio/crypto/secure_hash.hpp"
 #include "uvio/debug.hpp"
 #include "uvio/net/tcp_listener.hpp"
 #include "uvio/net/websocket/websocket_frame.hpp"
@@ -59,28 +61,21 @@ private:
 
         http::HttpResponse resp;
         if (request.headers.find("Upgrade")) {
-            auto security_key
-                = request.headers.find("sec-websocket-key").value();
+            auto has_security_key = request.headers.find("Sec-webSocket-Key");
+            if (!has_security_key) {
+                LOG_ERROR("No header: `Sec-WebSocket-Key`");
+                co_return;
+            }
+            auto security_key = std::move(has_security_key.value());
             security_key += "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-            std::array<unsigned char, 20> hash;
-#if OPENSSL_VERSION_NUMBER <= 0x030000000L
-            SHA_CTX sha1;
-            SHA1_Init(&sha1);
-            SHA1_Update(&sha1, security_key.data(), security_key.size());
-            SHA1_Final(hash.data(), &sha1);
-#else
-            EVP_MD_CTX *sha1 = EVP_MD_CTX_new();
-            EVP_DigestInit_ex(sha1, EVP_sha1(), nullptr);
-            EVP_DigestUpdate(sha1, security_key.data(), security_key.size());
-            EVP_DigestFinal_ex(sha1, hash.data(), nullptr);
-            EVP_MD_CTX_free(sha1);
-#endif
-            auto solved_hash = base64_encode(hash.data(), hash.size());
+
+            auto hash = secure_hash::sha1(security_key);
+            auto base64_hash = base64::encode(hash);
 
             resp.headers.add("Upgrade", "websocket");
             resp.headers.add("Connection", "Upgrade");
             resp.headers.add("Sec-WebSocket-Version", "13");
-            resp.headers.add("Sec-WebSocket-Accept", solved_hash);
+            resp.headers.add("Sec-WebSocket-Accept", base64_hash);
             co_await websocket_framed.write_response(resp);
 
             if (websocket_handler_) {

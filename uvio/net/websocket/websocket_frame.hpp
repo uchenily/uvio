@@ -84,7 +84,8 @@ public:
     }
 
     template <typename Writer>
-    auto http_response(http::HttpResponse &resp, Writer &writer) -> Task<> {
+    auto http_response(http::HttpResponse &resp, Writer &writer)
+        -> Task<Result<void>> {
         // 对普通的 HTTP 请求的响应
         if (auto ret = co_await writer.write(
                 std::format("HTTP/1.0 200 OK\r\nContent-Length: {}\r\n\r\n{}",
@@ -101,7 +102,7 @@ public:
 
     template <typename Writer>
     auto websocket_handshake(http::HttpResponse &resp, Writer &writer)
-        -> Task<> {
+        -> Task<Result<void>> {
         // 这里有个比较坑的地方, 如果写入的类型是 char *,
         // 那么长度会加一(结尾的\0), '\0'也会写入 buf 导致解析出问题 所以要使用
         // std::string/std::string_view, 避免使用c字符串

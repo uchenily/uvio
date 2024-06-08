@@ -20,6 +20,9 @@ if curl_dep.found()
   compile_args += '-DHAS_CURL'
 endif
 openssl_dep = dependency('openssl', required: false)
+if openssl_dep.found()
+  compile_args += '-DHAS_SSL'
+endif
 
 dependencies = []
 dependencies += libuv_dep
