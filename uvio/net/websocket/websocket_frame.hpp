@@ -232,13 +232,13 @@ public:
         }
         LOG_DEBUG("payload length: {}", length);
 
-        if (mask_) {
+        if (!client_side_) {
             co_await reader.read_exact(mask_bits);
         }
 
         auto payload = std::vector<char>(length);
         co_await reader.read_exact(payload);
-        if (mask_) {
+        if (!client_side_) {
             apply_mask(payload, mask_bits);
         }
         LOG_DEBUG("payload: {}",
@@ -247,18 +247,64 @@ public:
         co_return payload;
     }
 
+    enum class Opcode {
+        CONF = 0x00,
+        TEXT = 0x01,
+        BINARY = 0x02,
+        CLOSE = 0x08,
+        PING = 0x09,
+        PONG = 0x0A,
+    };
+
     template <typename Writer>
-    auto encode(std::span<const char> message, Writer &writer)
-        -> Task<Result<void>> {
-        // writer.write(message);
+    auto encode(std::span<char> message, Writer &writer) -> Task<Result<void>> {
+        // https://github.com/python-websockets/websockets/blob/12.0/src/websockets/frames.py#L273
+        std::array<char, 10> buf{};
+        buf[0] = static_cast<char>(0b1000'0000)
+                 | static_cast<char>(Opcode::TEXT); // fin + text
+        buf[1] = client_side_ ? static_cast<char>(0b1000'0000) : 0; // mask
+        auto length = message.size();
+        if (length < 126) {
+            buf[1] |= length;
+            co_await writer.write(std::span<char, 2>{buf.data(), 2});
+        } else if (length < 65536) {
+            buf[1] |= 126;
+            buf[2] = length | 0xFF;
+            buf[3] = (length >> 8) | 0xFF;
+            buf[4] = (length >> 16) | 0xFF;
+            buf[5] = (length >> 24) | 0xFF;
+            co_await writer.write(std::span<char, 6>{buf.data(), 6});
+        } else {
+            buf[1] |= 127;
+            buf[2] = length | 0xFF;
+            buf[3] = (length >> 8) | 0xFF;
+            buf[4] = (length >> 16) | 0xFF;
+            buf[5] = (length >> 24) | 0xFF;
+            buf[6] = (length >> 32) | 0xFF;
+            buf[7] = (length >> 40) | 0xFF;
+            buf[8] = (length >> 48) | 0xFF;
+            buf[9] = (length >> 56) | 0xFF;
+            co_await writer.write(buf);
+        }
+
+        if (client_side_) {
+            // TODO(x)
+            auto mask = std::array<char, 4>{1, 1, 1, 1};
+            co_await writer.write(mask);
+            apply_mask(message, mask);
+        }
+
+        co_await writer.write(message);
+        co_await writer.flush();
+
         co_return Result<void>{};
     }
 
-    auto enable_mask() {
-        mask_ = true;
+    auto client_side() {
+        client_side_ = true;
     }
 
-    auto apply_mask(std::vector<char> &data, const std::array<char, 4> &mask)
+    auto apply_mask(std::span<char> data, const std::array<char, 4> &mask)
         -> void {
         auto length = data.size();
         for (auto i = 0u; i < (length & ~3); i += 4) {
@@ -274,7 +320,7 @@ public:
     }
 
 private:
-    bool mask_{false};
+    bool client_side_{false};
 };
 
 class WebsocketFramed {
@@ -303,13 +349,13 @@ public:
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto send(std::span<const char> message) -> Task<Result<void>> {
+    auto send(std::span<char> message) -> Task<Result<void>> {
         co_return co_await websocket_codec_.Encode<void>(message,
                                                          buffered_writer_);
     }
 
-    auto server_side() {
-        websocket_codec_.enable_mask();
+    auto client_side() {
+        websocket_codec_.client_side();
     }
 
 private:
