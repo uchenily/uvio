@@ -40,6 +40,7 @@ public:
 private:
     auto handle_websocket(TcpStream stream) -> Task<void> {
         WebsocketFramed websocket_framed{std::move(stream)};
+        websocket_framed.server_side();
 
         auto req = co_await websocket_framed.read_request();
         if (!req) {
@@ -97,9 +98,11 @@ private:
     }
 
     auto data_transfer(WebsocketFramed &websocket_framed) -> Task<> {
-        auto message = co_await websocket_framed.recv();
-        if (message) {
-            LOG_DEBUG("Received: {}", message.value());
+        auto has_message = co_await websocket_framed.recv();
+        if (has_message) {
+            auto message = std::move(has_message.value());
+            LOG_DEBUG("Received: {}",
+                      std::string_view{message.data(), message.size()});
         }
         co_return;
     }

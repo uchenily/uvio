@@ -210,8 +210,41 @@ public:
 class WebsocketCodec : public Codec<WebsocketCodec> {
 public:
     template <typename Reader>
-    auto decode(Reader &reader) -> Task<Result<std::string>> {
-        co_return std::string{"hello"};
+    auto decode(Reader &reader) -> Task<Result<std::vector<char>>> {
+        // https://github.com/python-websockets/websockets/blob/12.0/src/websockets/legacy/framing.py
+        std::array<char, 2> buf;
+        std::array<char, 4> mask_bits{};
+        std::array<char, 8> buf8{};
+        co_await reader.read_exact(buf);
+        bool fin = buf[0] & 0b100000000;
+        auto opcode = buf[0] & 0b00001111;
+        // auto length = static_cast<size_t>(buf[1]);
+        uint64_t length = (static_cast<unsigned char>(buf[1]) & 0b01111111);
+        LOG_DEBUG("pre: {}", length);
+        if (length == 126) {
+            co_await reader.read_exact(buf);
+            length = buf[0] << 8 | buf[1];
+        } else if (length == 127) {
+            co_await reader.read_exact(buf8);
+            length = buf8[7] << 56 | buf8[6] << 48 | buf8[5] << 40
+                     | buf8[4] << 32 | buf8[3] << 24 | buf8[2] << 16
+                     | buf8[1] << 8 | buf[0];
+        }
+        LOG_DEBUG("payload length: {}", length);
+
+        if (mask_) {
+            co_await reader.read_exact(mask_bits);
+        }
+
+        auto payload = std::vector<char>(length);
+        co_await reader.read_exact(payload);
+        if (mask_) {
+            apply_mask(payload, mask_bits);
+        }
+        LOG_DEBUG("payload: {}",
+                  std::string_view{payload.data(), payload.size()});
+
+        co_return payload;
     }
 
     template <typename Writer>
@@ -220,6 +253,28 @@ public:
         // writer.write(message);
         co_return Result<void>{};
     }
+
+    auto enable_mask() {
+        mask_ = true;
+    }
+
+    auto apply_mask(std::vector<char> &data, const std::array<char, 4> &mask)
+        -> void {
+        auto length = data.size();
+        for (auto i = 0u; i < (length & ~3); i += 4) {
+            data[i + 0] ^= mask[0];
+            data[i + 1] ^= mask[1];
+            data[i + 2] ^= mask[2];
+            data[i + 3] ^= mask[3];
+        }
+
+        for (auto i = length & ~3; i < data.size(); ++i) {
+            data[i] ^= mask[i % 4];
+        }
+    }
+
+private:
+    bool mask_{false};
 };
 
 class WebsocketFramed {
@@ -242,8 +297,8 @@ public:
     }
 
     [[REMEMBER_CO_AWAIT]]
-    auto recv() -> Task<Result<std::string>> {
-        co_return co_await websocket_codec_.Decode<std::string>(
+    auto recv() -> Task<Result<std::vector<char>>> {
+        co_return co_await websocket_codec_.Decode<std::vector<char>>(
             buffered_reader_);
     }
 
@@ -251,6 +306,10 @@ public:
     auto send(std::span<const char> message) -> Task<Result<void>> {
         co_return co_await websocket_codec_.Encode<void>(message,
                                                          buffered_writer_);
+    }
+
+    auto server_side() {
+        websocket_codec_.enable_mask();
     }
 
 private:
