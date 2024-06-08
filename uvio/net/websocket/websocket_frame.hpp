@@ -227,9 +227,6 @@ public:
         if (!client_side_) {
             apply_mask(payload, mask_bits);
         }
-        LOG_DEBUG("payload: {}",
-                  std::string_view{payload.data(), payload.size()});
-
         co_return payload;
     }
 
