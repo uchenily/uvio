@@ -102,14 +102,20 @@ private:
             LOG_ERROR("{}", has_message.error().message());
             co_return;
         }
-
         auto message = std::move(has_message.value());
         LOG_DEBUG("Received: {}",
                   std::string_view{message.data(), message.size()});
         co_await websocket_framed.send(message);
 
-        co_await websocket_framed.recv();
-        co_await websocket_framed.send(message);
+        auto has_message2 = co_await websocket_framed.recv();
+        if (!has_message2) {
+            LOG_ERROR("{}", has_message2.error().message());
+            co_return;
+        }
+        auto message2 = std::move(has_message2.value());
+        LOG_DEBUG("Received: {}",
+                  std::string_view{message2.data(), message2.size()});
+        co_await websocket_framed.send(message2);
 
         co_await websocket_framed.close();
         co_return;

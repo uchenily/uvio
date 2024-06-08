@@ -212,23 +212,32 @@ public:
     template <typename Reader>
     auto decode(Reader &reader) -> Task<Result<std::vector<char>>> {
         // https://github.com/python-websockets/websockets/blob/12.0/src/websockets/legacy/framing.py
-        std::array<char, 2> buf;
-        std::array<char, 4> mask_bits{};
-        std::array<char, 8> buf8{};
+        std::array<char, 2>          buf;
+        std::array<char, 4>          mask_bits{};
+        std::array<unsigned char, 8> buf8{};
         co_await reader.read_exact(buf);
         bool fin = buf[0] & 0b100000000;
         auto opcode = buf[0] & 0b00001111;
-        // auto length = static_cast<size_t>(buf[1]);
+        ASSERT(fin);
+        ASSERT(opcode == (int) Opcode::TEXT);
+
+        // auto length = static_cast<size_t>(buf[1]); // error
         uint64_t length = (static_cast<unsigned char>(buf[1]) & 0b01111111);
         LOG_DEBUG("pre: {}", length);
         if (length == 126) {
             co_await reader.read_exact(buf);
             length = buf[0] << 8 | buf[1];
         } else if (length == 127) {
-            co_await reader.read_exact(buf8);
-            length = buf8[7] << 56 | buf8[6] << 48 | buf8[5] << 40
-                     | buf8[4] << 32 | buf8[3] << 24 | buf8[2] << 16
-                     | buf8[1] << 8 | buf[0];
+            co_await reader.read_exact(
+                {reinterpret_cast<char *>(buf8.data()), buf8.size()});
+            length = static_cast<uint64_t>(buf[0])
+                     | static_cast<uint64_t>(buf8[1]) << 8
+                     | static_cast<uint64_t>(buf8[2]) << 16
+                     | static_cast<uint64_t>(buf8[3]) << 24
+                     | static_cast<uint64_t>(buf8[4]) << 32
+                     | static_cast<uint64_t>(buf8[5]) << 40
+                     | static_cast<uint64_t>(buf8[6]) << 48
+                     | static_cast<uint64_t>(buf8[7]) << 56;
         }
         LOG_DEBUG("payload length: {}", length);
 
@@ -247,33 +256,26 @@ public:
         co_return payload;
     }
 
-    enum class Opcode {
-        CONF = 0x00,
-        TEXT = 0x01,
-        BINARY = 0x02,
-        CLOSE = 0x08,
-        PING = 0x09,
-        PONG = 0x0A,
-    };
-
     template <typename Writer>
-    auto encode(std::span<char> message, Writer &writer) -> Task<Result<void>> {
+    auto encode(WebsocketFrame frame, Writer &writer) -> Task<Result<void>> {
         // https://github.com/python-websockets/websockets/blob/12.0/src/websockets/frames.py#L273
-        std::array<char, 10> buf{};
+        std::array<unsigned char, 10> buf{};
         buf[0] = static_cast<char>(0b1000'0000)
-                 | static_cast<char>(Opcode::TEXT); // fin + text
+                 | static_cast<char>(frame.opcode); // fin + opcode
         buf[1] = client_side_ ? static_cast<char>(0b1000'0000) : 0; // mask
-        auto length = message.size();
+        auto length = frame.payload_length();
         if (length < 126) {
             buf[1] |= length;
-            co_await writer.write(std::span<char, 2>{buf.data(), 2});
+            co_await writer.write(
+                std::span<char, 2>{reinterpret_cast<char *>(buf.data()), 2});
         } else if (length < 65536) {
             buf[1] |= 126;
             buf[2] = length | 0xFF;
             buf[3] = (length >> 8) | 0xFF;
             buf[4] = (length >> 16) | 0xFF;
             buf[5] = (length >> 24) | 0xFF;
-            co_await writer.write(std::span<char, 6>{buf.data(), 6});
+            co_await writer.write(
+                std::span<char, 6>{reinterpret_cast<char *>(buf.data()), 6});
         } else {
             buf[1] |= 127;
             buf[2] = length | 0xFF;
@@ -284,40 +286,18 @@ public:
             buf[7] = (length >> 40) | 0xFF;
             buf[8] = (length >> 48) | 0xFF;
             buf[9] = (length >> 56) | 0xFF;
-            co_await writer.write(buf);
+            co_await writer.write(
+                {reinterpret_cast<char *>(buf.data()), buf.size()});
         }
 
         if (client_side_) {
             // TODO(x)
             auto mask = std::array<char, 4>{1, 1, 1, 1};
             co_await writer.write(mask);
-            apply_mask(message, mask);
+            apply_mask(frame.message, mask);
         }
 
-        co_await writer.write(message);
-        co_await writer.flush();
-
-        co_return Result<void>{};
-    }
-    template <typename Writer>
-    auto encode(int x, Writer &writer) -> Task<Result<void>> {
-        auto                 message = std::string{"Close"};
-        std::array<char, 10> buf{};
-        buf[0] = static_cast<char>(0b1000'0000)
-                 | static_cast<char>(Opcode::CLOSE); // fin + close
-        buf[1] = client_side_ ? static_cast<char>(0b1000'0000) : 0; // mask
-        auto length = message.size();
-        buf[1] |= length;
-        co_await writer.write(std::span<char, 2>{buf.data(), 2});
-
-        if (client_side_) {
-            // TODO(x)
-            auto mask = std::array<char, 4>{1, 1, 1, 1};
-            co_await writer.write(mask);
-            apply_mask(message, mask);
-        }
-
-        co_await writer.write(message);
+        co_await writer.write(frame.message);
         co_await writer.flush();
 
         co_return Result<void>{};
@@ -373,13 +353,22 @@ public:
 
     [[REMEMBER_CO_AWAIT]]
     auto send(std::span<char> message) -> Task<Result<void>> {
-        co_return co_await websocket_codec_.Encode<void>(message,
+        WebsocketFrame frame{
+            .opcode = Opcode::TEXT,
+            .message = message,
+        };
+        co_return co_await websocket_codec_.Encode<void>(frame,
                                                          buffered_writer_);
     }
 
     [[REMEMBER_CO_AWAIT]]
     auto close() -> Task<Result<void>> {
-        co_return co_await websocket_codec_.Encode<void>(0, buffered_writer_);
+        WebsocketFrame frame{
+            .opcode = Opcode::CLOSE,
+            .message = {},
+        };
+        co_return co_await websocket_codec_.Encode<void>(frame,
+                                                         buffered_writer_);
     }
 
     auto client_side() {
