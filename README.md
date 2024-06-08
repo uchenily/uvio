@@ -117,3 +117,4 @@ clang (>= 17) 或 gcc (>= 13) 或 apple clang (>= 15) 或 MSVC (>= 19)
 
 - [Zedio](https://github.com/8sileus/zedio): A runtime for writing asychronous applications with Modern C++, based on C++20 coroutine and liburing (io-uring)
 - [async_simple](https://github.com/alibaba/async_simple): Simple, light-weight and easy-to-use asynchronous components
+- [ws28](https://github.com/Matheus28/ws28): C++17 WebSocket server library (uses libuv)
