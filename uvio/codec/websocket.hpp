@@ -27,7 +27,7 @@ public:
         if (length == 126) {
             co_await reader.read_exact(buf);
             length = buf[1] << 8 | buf[0];
-            length = net::byteorder::ntohs(length);
+            length = net::byteorder::ntoh16(length);
         } else if (length == 127) {
             co_await reader.read_exact(
                 {reinterpret_cast<char *>(buf8.data()), buf8.size()});
@@ -39,7 +39,7 @@ public:
                      | static_cast<uint64_t>(buf8[5]) << 40
                      | static_cast<uint64_t>(buf8[6]) << 48
                      | static_cast<uint64_t>(buf8[7]) << 56;
-            length = net::byteorder::ntohll(length);
+            length = net::byteorder::ntoh64(length);
         }
         LOG_DEBUG("payload length: {}", length);
 
@@ -67,13 +67,13 @@ public:
             buf[1] |= length;
             co_await writer.write({reinterpret_cast<char *>(buf.data()), 2});
         } else if (length < 65536) {
-            length = net::byteorder::htons(length);
+            length = net::byteorder::hton16(length);
             buf[1] |= 126;
             buf[2] = (length >> 0) & 0xFF;
             buf[3] = (length >> 8) & 0xFF;
             co_await writer.write({reinterpret_cast<char *>(buf.data()), 4});
         } else {
-            length = net::byteorder::htonll(length);
+            length = net::byteorder::hton64(length);
             buf[1] |= 127;
             buf[2] = (length >> 0) & 0xFF;
             buf[3] = (length >> 8) & 0xFF;

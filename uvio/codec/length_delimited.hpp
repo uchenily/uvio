@@ -78,7 +78,7 @@ private:
             }
             value |= static_cast<uint64_t>(bytes[0] & 0x7F) << (i * 7);
             if ((bytes[0] & 0x80) == 0) {
-                value = net::byteorder::ntohll(value);
+                value = net::byteorder::ntoh64(value);
                 co_return value;
             }
         }
@@ -89,7 +89,7 @@ private:
     auto encode_length(uint64_t value, Writer &writer) -> Task<Result<void>> {
         // Encodes value in varint format and writes the result by writer
         std::array<char, 1> bytes;
-        value = net::byteorder::htonll(value);
+        value = net::byteorder::hton64(value);
         do {
             bytes[0] = (value & 0x7F) | (((value >> 7) == 0) ? 0x00 : 0x80);
             if (auto ret = co_await writer.write(bytes); !ret) {
