@@ -1,5 +1,6 @@
 #pragma once
 #include "uvio/codec/base.hpp"
+#include "uvio/net/endian.hpp"
 
 namespace uvio::codec {
 class FixedLength32Codec : public Codec<FixedLength32Codec> {
@@ -51,14 +52,16 @@ private:
             }
             value |= static_cast<uint32_t>(bytes[0] & 0xFF) << (i * 8);
         }
+        value = net::ntohl(value);
         co_return value;
     }
 
     template <typename Writer>
     auto encode_length(uint32_t value, Writer &writer) -> Task<Result<void>> {
         std::array<char, 1> bytes{};
+        value = net::htonl(value);
         for (int i = 0; i < fixed_length_bytes; ++i) {
-            bytes[0] = (value & 0xFF) | 0x00;
+            bytes[0] = static_cast<char>((value & 0xFF) | 0x00);
             if (auto ret = co_await writer.write(bytes); !ret) {
                 co_return unexpected{ret.error()};
             }

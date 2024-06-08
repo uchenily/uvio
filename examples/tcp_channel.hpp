@@ -46,8 +46,8 @@ private:
                                     1024};
     BufferedWriter buffered_writer_{io::OwnedWriteHalf<TcpStream>{nullptr},
                                     1024};
-    // LengthDelimitedCodec<BufferedReader, BufferedWriter> codec_{};
-    FixedLength32Codec codec_;
+    LengthDelimitedCodec codec_{};
+    // FixedLength32Codec codec_;
 };
 
 } // namespace example

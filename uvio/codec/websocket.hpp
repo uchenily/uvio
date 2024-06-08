@@ -1,6 +1,7 @@
 #pragma once
 
 #include "uvio/codec/base.hpp"
+#include "uvio/net/endian.hpp"
 #include "uvio/net/websocket/websocket_protocol.hpp"
 
 namespace uvio::codec {
@@ -25,11 +26,12 @@ public:
         LOG_DEBUG("pre: {}", length);
         if (length == 126) {
             co_await reader.read_exact(buf);
-            length = buf[0] << 8 | buf[1];
+            length = buf[1] << 8 | buf[0];
+            length = net::ntohs(length);
         } else if (length == 127) {
             co_await reader.read_exact(
                 {reinterpret_cast<char *>(buf8.data()), buf8.size()});
-            length = static_cast<uint64_t>(buf[0])
+            length = static_cast<uint64_t>(buf8[0])
                      | static_cast<uint64_t>(buf8[1]) << 8
                      | static_cast<uint64_t>(buf8[2]) << 16
                      | static_cast<uint64_t>(buf8[3]) << 24
@@ -37,6 +39,7 @@ public:
                      | static_cast<uint64_t>(buf8[5]) << 40
                      | static_cast<uint64_t>(buf8[6]) << 48
                      | static_cast<uint64_t>(buf8[7]) << 56;
+            length = net::ntohll(length);
         }
         LOG_DEBUG("payload length: {}", length);
 
@@ -62,26 +65,24 @@ public:
         auto length = frame.payload_length();
         if (length < 126) {
             buf[1] |= length;
-            co_await writer.write(
-                std::span<char, 2>{reinterpret_cast<char *>(buf.data()), 2});
+            co_await writer.write({reinterpret_cast<char *>(buf.data()), 2});
         } else if (length < 65536) {
+            length = net::htons(length);
             buf[1] |= 126;
-            buf[2] = length | 0xFF;
-            buf[3] = (length >> 8) | 0xFF;
-            buf[4] = (length >> 16) | 0xFF;
-            buf[5] = (length >> 24) | 0xFF;
-            co_await writer.write(
-                std::span<char, 6>{reinterpret_cast<char *>(buf.data()), 6});
+            buf[2] = (length >> 0) & 0xFF;
+            buf[3] = (length >> 8) & 0xFF;
+            co_await writer.write({reinterpret_cast<char *>(buf.data()), 4});
         } else {
+            length = net::htonll(length);
             buf[1] |= 127;
-            buf[2] = length | 0xFF;
-            buf[3] = (length >> 8) | 0xFF;
-            buf[4] = (length >> 16) | 0xFF;
-            buf[5] = (length >> 24) | 0xFF;
-            buf[6] = (length >> 32) | 0xFF;
-            buf[7] = (length >> 40) | 0xFF;
-            buf[8] = (length >> 48) | 0xFF;
-            buf[9] = (length >> 56) | 0xFF;
+            buf[2] = (length >> 0) & 0xFF;
+            buf[3] = (length >> 8) & 0xFF;
+            buf[4] = (length >> 16) & 0xFF;
+            buf[5] = (length >> 24) & 0xFF;
+            buf[6] = (length >> 32) & 0xFF;
+            buf[7] = (length >> 40) & 0xFF;
+            buf[8] = (length >> 48) & 0xFF;
+            buf[9] = (length >> 56) & 0xFF;
             co_await writer.write(
                 {reinterpret_cast<char *>(buf.data()), buf.size()});
         }
