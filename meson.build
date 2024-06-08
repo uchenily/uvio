@@ -19,6 +19,7 @@ curl_dep = cpp.find_library('curl', required: false)
 if curl_dep.found()
   compile_args += '-DHAS_CURL'
 endif
+openssl_dep = dependency('openssl', required: false)
 
 dependencies = []
 dependencies += libuv_dep

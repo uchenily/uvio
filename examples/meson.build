@@ -30,3 +30,18 @@ if curl_dep.found()
   test(target_name, target)
   endforeach
 endif
+
+websocket_examples_sources = [
+  'websocket_server.cpp',
+]
+if openssl_dep.found()
+  foreach source: websocket_examples_sources
+    target_name = source.replace('.cpp', '')
+    target = executable(target_name, source,
+      include_directories: includes,
+      cpp_args: compile_args,
+      dependencies: dependencies + openssl_dep)
+
+  test(target_name, target)
+  endforeach
+endif
