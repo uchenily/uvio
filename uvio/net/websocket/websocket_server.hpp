@@ -16,14 +16,21 @@ class WebsocketServer {
     using HandlerFunc = std::function<void(const http::HttpRequest &req,
                                            http::HttpResponse      &resp)>;
 
+    using WebsocketHandlerFunc
+        = std::function<Task<>(WebsocketFramed &websocket_framed)>;
+
 public:
     WebsocketServer(std::string_view host, int port)
         : host_{host}
         , port_{port} {}
 
 public:
-    auto set_handler(std::string_view uri, HandlerFunc &&func) {
+    auto set_http_handler(std::string_view uri, HandlerFunc &&func) {
         map_handles_[uri] = std::move(func);
+    }
+
+    auto set_websocket_handler(WebsocketHandlerFunc &&func) {
+        websocket_handler_ = std::move(func);
     }
 
     auto run() {
@@ -77,7 +84,9 @@ private:
             resp.headers.add("Sec-WebSocket-Accept", solved_hash);
             co_await websocket_framed.write_response(resp);
 
-            co_await data_transfer(websocket_framed);
+            if (websocket_handler_) {
+                co_await websocket_handler_(websocket_framed);
+            }
             co_return;
         }
 
@@ -97,37 +106,13 @@ private:
         }
     }
 
-    auto data_transfer(WebsocketFramed &websocket_framed) -> Task<> {
-        auto has_message = co_await websocket_framed.recv();
-        if (!has_message) {
-            LOG_ERROR("{}", has_message.error().message());
-            co_return;
-        }
-        auto message = std::move(has_message.value());
-        LOG_DEBUG("Received: {}",
-                  std::string_view{message.data(), message.size()});
-        co_await websocket_framed.send(message);
-
-        auto has_message2 = co_await websocket_framed.recv();
-        if (!has_message2) {
-            LOG_ERROR("{}", has_message2.error().message());
-            co_return;
-        }
-        auto message2 = std::move(has_message2.value());
-        LOG_DEBUG("Received: {}",
-                  std::string_view{message2.data(), message2.size()});
-        co_await websocket_framed.send(message2);
-
-        co_await websocket_framed.close();
-        co_return;
-    }
-
 private:
     std::string host_;
     int         port_;
     TcpStream   stream_{nullptr};
 
     std::unordered_map<std::string_view, HandlerFunc> map_handles_;
+    WebsocketHandlerFunc                              websocket_handler_;
 };
 
 } // namespace uvio::net::websocket
