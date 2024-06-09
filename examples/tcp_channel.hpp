@@ -33,7 +33,12 @@ public:
         std::string message;
         if (auto res = co_await codec_.Decode<void>(message, buffered_reader_);
             !res) {
-            co_return unexpected{res.error()};
+            // D:\a\uvio\uvio\examples\tcp_channel.hpp(36): error C2872:
+            // 'unexpected': ambiguous symbol
+            // C:\Program Files\Microsoft Visual
+            // Studio\2022\Enterprise\VC\Tools\MSVC\14.40.33807\include\eh.h(33):
+            // note: could be 'void unexpected(void) noexcept(false)'
+            co_return uvio::unexpected{res.error()};
         }
         co_return std::move(message);
     }
