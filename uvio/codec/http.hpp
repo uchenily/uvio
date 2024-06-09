@@ -44,7 +44,7 @@ public:
         // Host: xxx
         // Content-Type: application/html
         auto headers = parse_headers(request_headers);
-        req.headers = headers;
+        req.headers = std::move(headers);
 
         if (auto has_length = headers.find("Content-Length")) {
             std::string body;
@@ -75,7 +75,54 @@ public:
     template <typename Reader>
     auto decode(http::HttpResponse &resp, Reader &reader)
         -> Task<Result<void>> {
-        // TODO(x)
+        std::string status_line;
+        if (auto ret = co_await reader.read_until(status_line, "\r\n"); !ret) {
+            co_return unexpected{ret.error()};
+        }
+        LOG_DEBUG("{}", status_line);
+        // HTTP/1.1 200 OK
+        auto ret = parse_status_line(status_line);
+        if (!ret) {
+            co_return unexpected{ret.error()};
+        }
+        auto [version, status_code, status_text] = ret.value();
+        LOG_DEBUG("version: {}", version);
+        LOG_DEBUG("status_code: {}", status_code);
+        LOG_DEBUG("status_text: {}", status_text);
+        resp.status_code = std::stoi(std::string{status_code});
+
+        std::string request_headers(2, 0);
+        if (auto ret = co_await reader.read_exact(request_headers); !ret) {
+            co_return unexpected{ret.error()};
+        } else if (request_headers == "\r\n") {
+            // no response body
+            co_return Result<void>{};
+        }
+
+        if (auto ret = co_await reader.read_until(request_headers, "\r\n\r\n");
+            !ret) {
+            co_return unexpected{ret.error()};
+        }
+        LOG_DEBUG("{}", request_headers);
+        // Server: Apache
+        // Content-Length: 81
+        // Connection: Keep-Alive
+        // Content-Type: text/html
+        auto headers = parse_headers(request_headers);
+        resp.headers = std::move(headers);
+
+        if (auto has_length = headers.find("Content-Length")) {
+            std::string body;
+            auto        length = std::stoi(has_length.value());
+            LOG_DEBUG("Parsed body length: {}", length);
+            body.resize(length);
+            if (auto ret = co_await reader.read_exact(body); !ret) {
+                co_return unexpected{ret.error()};
+            }
+            LOG_DEBUG("body: `{}`", body);
+            resp.body = std::move(body);
+        }
+
         co_return Result<void>{};
     }
 
@@ -159,6 +206,45 @@ public:
         start = ++end;
 
         // HTTP version
+        while (end < line.size() && line[end] != '\r' && line[end] != '\n') {
+            ++end;
+        }
+        if (line[end] != '\r' && line[end] != '\n') {
+            return unexpected{make_uvio_error(Error::Unclassified)};
+        }
+        parts.emplace_back(line.data() + start, end - start);
+
+        return std::tuple{parts[0], parts[1], parts[2]};
+    }
+
+    auto parse_status_line(std::string_view line) -> Result<
+        std::tuple<std::string_view, std::string_view, std::string_view>> {
+        std::vector<std::string_view> parts;
+
+        std::size_t start = 0;
+        std::size_t end = 0;
+
+        // HTTP version
+        while (end < line.size() && line[end] != ' ') {
+            ++end;
+        }
+        if (line[end] != ' ') {
+            return unexpected{make_uvio_error(Error::Unclassified)};
+        }
+        parts.emplace_back(line.data() + start, end - start);
+        start = ++end;
+
+        // status code
+        while (end < line.size() && line[end] != ' ') {
+            ++end;
+        }
+        if (line[end] != ' ') {
+            return unexpected{make_uvio_error(Error::Unclassified)};
+        }
+        parts.emplace_back(line.data() + start, end - start);
+        start = ++end;
+
+        // status text
         while (end < line.size() && line[end] != '\r' && line[end] != '\n') {
             ++end;
         }

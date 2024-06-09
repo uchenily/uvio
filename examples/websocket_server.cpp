@@ -9,6 +9,7 @@ auto process_message(websocket::WebsocketFramed &channel) -> Task<> {
     for (int i = 0; i < 64; i++) {
         auto msg = (co_await channel.recv()).value();
         LOG_INFO("Received: `{}`", std::string_view{msg.data(), msg.size()});
+
         co_await channel.send(msg);
     }
     co_await channel.close();
