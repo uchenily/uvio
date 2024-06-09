@@ -5,6 +5,7 @@
 #include "uvio/common/expected.hpp"
 #include "uvio/common/result.hpp"
 #include "uvio/debug.hpp"
+#include "uvio/net/http/http_protocol.hpp"
 #include "uvio/net/tcp_reader.hpp"
 #include "uvio/net/tcp_writer.hpp"
 
@@ -26,21 +27,50 @@ public:
     }
 
 public:
+    // server
     [[REMEMBER_CO_AWAIT]]
-    auto write_response(http::HttpResponse resp) -> Task<Result<void>> {
+    auto send_response(const http::HttpResponse &resp) -> Task<Result<void>> {
         co_return co_await http_codec_.Encode<void>(resp, buffered_writer_);
     }
 
+    // server
     [[REMEMBER_CO_AWAIT]]
-    auto read_request() -> Task<Result<http::HttpRequest>> {
-        co_return co_await http_codec_.Decode<http::HttpRequest>(
-            buffered_reader_);
+    auto recv_request() -> Task<Result<http::HttpRequest>> {
+        http::HttpRequest req;
+        if (auto res = co_await http_codec_.Decode<void>(req, buffered_reader_);
+            !res) {
+            co_return unexpected{res.error()};
+        }
+        co_return std::move(req);
+    }
+
+    // client
+    [[REMEMBER_CO_AWAIT]]
+    auto send_request(const http::HttpRequest &req) -> Task<Result<void>> {
+        co_return co_await http_codec_.Encode<void>(req, buffered_writer_);
+    }
+
+    // client
+    [[REMEMBER_CO_AWAIT]]
+    auto recv_response() -> Task<Result<http::HttpResponse>> {
+        http::HttpResponse resp;
+        if (auto res
+            = co_await http_codec_.Decode<void>(resp, buffered_reader_);
+            !res) {
+            co_return unexpected{res.error()};
+        }
+        co_return std::move(resp);
     }
 
     [[REMEMBER_CO_AWAIT]]
     auto recv() -> Task<Result<std::vector<char>>> {
-        co_return co_await websocket_codec_.Decode<std::vector<char>>(
-            buffered_reader_);
+        std::vector<char> payload;
+        if (auto res
+            = co_await websocket_codec_.Decode<void>(payload, buffered_reader_);
+            !res) {
+            co_return unexpected{res.error()};
+        }
+        co_return std::move(payload);
     }
 
     [[REMEMBER_CO_AWAIT]]

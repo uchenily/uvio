@@ -6,18 +6,18 @@ namespace uvio::codec {
 class FixedLength32Codec : public Codec<FixedLength32Codec> {
 public:
     template <typename Reader>
-    auto decode(Reader &reader) -> Task<Result<std::string>> {
+    auto decode(std::string &message, Reader &reader) -> Task<Result<void>> {
         auto has_length = co_await decode_length(reader);
         if (!has_length) {
             co_return unexpected{has_length.error()};
         }
         auto length = has_length.value();
 
-        std::string message(length, 0);
+        message.resize(length);
         if (auto ret = co_await reader.read_exact(message); !ret) {
             co_return unexpected{ret.error()};
         }
-        co_return message;
+        co_return Result<void>{};
     }
 
     template <typename Writer>

@@ -10,7 +10,8 @@ using namespace uvio::net::websocket;
 class WebsocketCodec : public Codec<WebsocketCodec> {
 public:
     template <typename Reader>
-    auto decode(Reader &reader) -> Task<Result<std::vector<char>>> {
+    auto decode(std::vector<char> &payload, Reader &reader)
+        -> Task<Result<void>> {
         // https://github.com/python-websockets/websockets/blob/12.0/src/websockets/legacy/framing.py
         std::array<char, 2>          buf;
         std::array<char, 4>          mask_bits{};
@@ -47,12 +48,12 @@ public:
             co_await reader.read_exact(mask_bits);
         }
 
-        auto payload = std::vector<char>(length);
+        payload.resize(length);
         co_await reader.read_exact(payload);
         if (!client_side_) {
             apply_mask(payload, mask_bits);
         }
-        co_return payload;
+        co_return Result<void>{};
     }
 
     template <typename Writer>

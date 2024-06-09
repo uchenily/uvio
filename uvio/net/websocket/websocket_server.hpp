@@ -48,7 +48,7 @@ private:
     auto handle_websocket(TcpStream stream) -> Task<void> {
         WebsocketFramed websocket_framed{std::move(stream)};
 
-        auto req = co_await websocket_framed.read_request();
+        auto req = co_await websocket_framed.recv_request();
         if (!req) {
             console.info("client closed");
             co_return;
@@ -74,7 +74,7 @@ private:
             resp.headers.add("Connection", "Upgrade");
             resp.headers.add("Sec-WebSocket-Version", "13");
             resp.headers.add("Sec-WebSocket-Accept", base64_hash);
-            co_await websocket_framed.write_response(resp);
+            co_await websocket_framed.send_response(resp);
 
             if (websocket_handler_) {
                 co_await websocket_handler_(websocket_framed);
@@ -92,7 +92,7 @@ private:
             resp.status_code = 404;
         }
 
-        if (auto res = co_await websocket_framed.write_response(resp); !res) {
+        if (auto res = co_await websocket_framed.send_response(resp); !res) {
             console.error("{}", res.error().message());
             co_return;
         }

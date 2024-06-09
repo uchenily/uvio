@@ -30,7 +30,12 @@ public:
 
     [[REMEMBER_CO_AWAIT]]
     auto Recv() -> Task<Result<std::string>> {
-        co_return co_await codec_.Decode<std::string>(buffered_reader_);
+        std::string message;
+        if (auto res = co_await codec_.Decode<void>(message, buffered_reader_);
+            !res) {
+            co_return unexpected{res.error()};
+        }
+        co_return std::move(message);
     }
 
     // [[REMEMBER_CO_AWAIT]]

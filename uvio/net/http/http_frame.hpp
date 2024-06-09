@@ -33,7 +33,12 @@ public:
 
     [[REMEMBER_CO_AWAIT]]
     auto read_request() -> Task<Result<HttpRequest>> {
-        co_return co_await codec_.Decode<HttpRequest>(buffered_reader_);
+        HttpRequest req;
+        if (auto res = co_await codec_.Decode<void>(req, buffered_reader_);
+            !res) {
+            co_return unexpected{res.error()};
+        }
+        co_return std::move(req);
     }
 
 private:

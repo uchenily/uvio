@@ -8,7 +8,7 @@ public:
     // friend class Codec<LengthDelimitedCodec<Reader, Writer>, Reader, Writer>;
 
     template <typename Reader>
-    auto decode(Reader &reader) -> Task<Result<std::string>> {
+    auto decode(std::string &message, Reader &reader) -> Task<Result<void>> {
         // std::array<unsigned char, 4> msg_len{};
         //
         // auto ret = co_await reader.read_exact(
@@ -26,11 +26,11 @@ public:
         }
         auto length = has_length.value();
 
-        std::string message(length, 0);
+        message.resize(length);
         if (auto ret = co_await reader.read_exact(message); !ret) {
             co_return unexpected{ret.error()};
         }
-        co_return message;
+        co_return Result<void>{};
     }
 
     template <typename Writer>
@@ -91,7 +91,8 @@ private:
         std::array<char, 1> bytes;
         value = net::byteorder::hton64(value);
         do {
-            bytes[0] = (value & 0x7F) | (((value >> 7) == 0) ? 0x00 : 0x80);
+            bytes[0] = static_cast<char>((value & 0x7F)
+                                         | (((value >> 7) == 0) ? 0x00 : 0x80));
             if (auto ret = co_await writer.write(bytes); !ret) {
                 co_return unexpected{ret.error()};
             }

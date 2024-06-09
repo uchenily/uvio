@@ -10,9 +10,8 @@ using namespace uvio::net;
 class HttpCodec : public Codec<HttpCodec> {
 public:
     template <typename Reader>
-    auto decode(Reader &reader) -> Task<Result<http::HttpRequest>> {
-        http::HttpRequest req;
-        std::string       request_line;
+    auto decode(http::HttpRequest &req, Reader &reader) -> Task<Result<void>> {
+        std::string request_line;
         if (auto ret = co_await reader.read_until(request_line, "\r\n"); !ret) {
             co_return unexpected{ret.error()};
         }
@@ -34,7 +33,7 @@ public:
             co_return unexpected{ret.error()};
         } else if (request_headers == "\r\n") {
             // no request_headers
-            co_return req;
+            co_return Result<void>{};
         }
 
         if (auto ret = co_await reader.read_until(request_headers, "\r\n\r\n");
@@ -59,7 +58,7 @@ public:
             req.body = std::move(body);
         }
 
-        co_return req;
+        co_return Result<void>{};
     }
 
     template <typename Writer>
@@ -70,6 +69,30 @@ public:
         }
 
         co_return co_await websocket_handshake(resp, writer);
+    }
+
+    // client
+    template <typename Reader>
+    auto decode(http::HttpResponse &resp, Reader &reader)
+        -> Task<Result<void>> {
+        // TODO(x)
+        co_return Result<void>{};
+    }
+
+    // client
+    template <typename Writer>
+    auto encode(http::HttpRequest &req, Writer &writer) -> Task<Result<void>> {
+        co_await writer.write(
+            std::format("{} {} HTTP/1.1\r\n", req.method, req.uri));
+        for (auto &[k, v] : req.headers.inner()) {
+            co_await writer.write(std::format("{}: {}\r\n", k, v));
+        }
+        co_await writer.write(std::string_view{"\r\n"});
+
+        if (auto ret = co_await writer.flush(); !ret) {
+            co_return ret;
+        }
+        co_return Result<void>{};
     }
 
     template <typename Writer>

@@ -84,6 +84,7 @@ public:
 #endif
 
     static auto is_big_endian() -> bool {
+        // constexpr (std::endian::native == std::endian::big)
 #if defined(__linux__)
         return __BYTE_ORDER == __BIG_ENDIAN;
 #elif defined(__i386__) || defined(__x86_64__) || defined(_M_IX86)             \
