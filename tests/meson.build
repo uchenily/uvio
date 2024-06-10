@@ -15,6 +15,7 @@ all_tests_sources = [
   'coro_work.cpp',
   'test_latch.cpp',
   'test_dns.cpp',
+  'coro_dns.cpp',
   'test_buffered.cpp',
   'test_buffered2.cpp',
   'test_coredump.cpp',
