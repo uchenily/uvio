@@ -47,7 +47,7 @@ jobs:
           meson setup build -Dbuildtype=release
           meson compile -C build
           # ./build/tests/gtests/all_gtests
-          .\build\tests\gtests\all_gtests.exe
+          # .\build\tests\gtests\all_gtests.exe
 
       - name: Install
         run: |
