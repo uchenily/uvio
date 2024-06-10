@@ -4,22 +4,22 @@
 namespace uvio {
 
 template <typename Func>
-struct ScopeExit final {
-    ScopeExit(Func func)
+struct ScopeGuard final {
+    ScopeGuard(Func func)
         : func_{std::move(func)} {}
 
-    ~ScopeExit() {
+    ~ScopeGuard() {
         if (active_) {
             std::invoke(func_);
         }
     }
 
     // No move
-    ScopeExit(ScopeExit &&) = delete;
-    auto operator=(ScopeExit &&) = delete;
+    ScopeGuard(ScopeGuard &&) = delete;
+    auto operator=(ScopeGuard &&) = delete;
     // No copy
-    ScopeExit(const ScopeExit &) = delete;
-    auto operator=(const ScopeExit &) = delete;
+    ScopeGuard(const ScopeGuard &) = delete;
+    auto operator=(const ScopeGuard &) = delete;
 
     void cancel() {
         active_ = false;
@@ -30,11 +30,11 @@ private:
     bool active_{true};
 };
 
-#define SCOPE_EXIT_CONCAT_2_IMPL(a, b) a##b
-#define SCOPE_EXIT_CONCAT_2(a, b) SCOPE_EXIT_CONCAT_2_IMPL(a, b)
+#define SCOPE_GUARD_CONCAT_2_IMPL(a, b) a##b
+#define SCOPE_GUARD_CONCAT_2(a, b) SCOPE_GUARD_CONCAT_2_IMPL(a, b)
 
-#define SCOPE_EXIT(x)                                                          \
-    auto SCOPE_EXIT_CONCAT_2(_deffered_, __COUNTER__) = ScopeExit(x)
+#define AddScopeExitGuard(x)                                                   \
+    auto SCOPE_GUARD_CONCAT_2(_deffered_, __COUNTER__) = ScopeGuard(x)
 
 // std::scope_exit ?
 

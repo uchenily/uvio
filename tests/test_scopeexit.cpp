@@ -5,7 +5,7 @@ using namespace uvio;
 
 auto main() -> int {
     LOG_INFO("allocate resource");
-    SCOPE_EXIT([]() {
+    AddScopeExitGuard([]() {
         LOG_INFO("recovery resource");
     });
 

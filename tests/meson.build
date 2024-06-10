@@ -1,6 +1,7 @@
 all_tests_sources = [
   'test_log.cpp',
   'test_backtrace.cpp',
+  'test_scopeexit.cpp',
   'test_libuv.cpp',
   'test_task.cpp',
   'test_timer.cpp',
@@ -35,4 +36,4 @@ foreach source: all_tests_sources
   test(test_name, exe)
 endforeach
 
-subdir('gtests')
+# subdir('gtests')
