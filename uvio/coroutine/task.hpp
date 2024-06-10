@@ -106,8 +106,9 @@ public:
         return *this;
     }
 
+    // No copy
     Task(const Task &) = delete;
-    auto operator=(const Task &) -> Task & = delete;
+    auto operator=(const Task &) = delete;
 
 public:
     auto operator co_await() const & noexcept {

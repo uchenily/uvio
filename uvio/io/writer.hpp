@@ -29,6 +29,10 @@ public:
         return *this;
     }
 
+    // No copy
+    BufWriter(const BufWriter &other) = delete;
+    auto operator=(const BufWriter &other) = delete;
+
 public:
     [[nodiscard]]
     auto inner() noexcept -> IO & {

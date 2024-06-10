@@ -30,6 +30,10 @@ public:
         return *this;
     }
 
+    // No copy
+    BufReader(const BufReader &other) = delete;
+    auto operator=(const BufReader &other) = delete;
+
 public:
     auto inner() noexcept -> IO & {
         return io_;

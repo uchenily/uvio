@@ -33,6 +33,7 @@ public:
         return *this;
     }
 
+    // No copy
     TcpStream(const TcpStream &) = delete;
     auto operator=(const TcpStream &) = delete;
 

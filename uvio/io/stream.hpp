@@ -36,6 +36,10 @@ public:
         return *this;
     }
 
+    // No copy
+    BufStream(const BufStream &other) = delete;
+    auto operator=(const BufStream &other) = delete;
+
 public:
     [[nodiscard]]
     auto inner() noexcept -> IO & {
