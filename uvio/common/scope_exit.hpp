@@ -5,8 +5,8 @@ namespace uvio {
 
 template <typename Func>
 struct ScopeGuard final {
-    ScopeGuard(Func func)
-        : func_{std::move(func)} {}
+    ScopeGuard(Func &&func)
+        : func_{std::forward<Func>(func)} {}
 
     ~ScopeGuard() {
         if (active_) {
