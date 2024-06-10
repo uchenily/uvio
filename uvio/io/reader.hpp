@@ -23,7 +23,7 @@ public:
         , r_stream_{std::move(other.r_stream_)} {}
 
     auto operator=(BufReader &&other) noexcept -> BufReader & {
-        if (std::addressof(other) != this) {
+        if (std::addressof(other) != this) [[likely]] {
             io_ = std::move(other.io_);
             r_stream_ = std::move(other.r_stream_);
         }

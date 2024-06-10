@@ -99,7 +99,7 @@ public:
         other.handle_ = nullptr;
     }
     auto operator=(Task &&other) noexcept -> Task & {
-        if (std::addressof(other) != this) {
+        if (std::addressof(other) != this) [[likely]] {
             handle_ = std::move(other.handle_);
             other.handle_ = nullptr;
         }

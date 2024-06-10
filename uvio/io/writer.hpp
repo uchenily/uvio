@@ -22,7 +22,7 @@ public:
         , w_stream_{std::move(other.w_stream_)} {}
 
     auto operator=(BufWriter &&other) noexcept -> BufWriter & {
-        if (std::addressof(other) != this) {
+        if (std::addressof(other) != this) [[likely]] {
             io_ = std::move(other.io_);
             w_stream_ = std::move(other.w_stream_);
         }

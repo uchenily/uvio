@@ -26,7 +26,7 @@ public:
         other.tcp_handle_ = nullptr;
     }
     auto operator=(TcpStream &&other) noexcept -> TcpStream & {
-        if (std::addressof(other) != this) {
+        if (std::addressof(other) != this) [[likely]] {
             tcp_handle_ = std::move(other.tcp_handle_);
             other.tcp_handle_ = nullptr;
         }
