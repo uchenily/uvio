@@ -111,6 +111,10 @@ clang (>= 17) 或 gcc (>= 13) 或 apple clang (>= 15) 或 MSVC (>= 19)
 
 [benchmark](./benchmark/benchmark.md)
 
+## 参与开发
+
+如果有使用上的疑问或者任何ideas, 欢迎通过 [Issues](https://github.com/uchenily/uvio/issues) 或者 [Discussions](https://github.com/uchenily/uvio/discussions) 分享
+
 ## 致谢
 
 项目设计与实现参考了以下开源项目, 在此表示感谢!
