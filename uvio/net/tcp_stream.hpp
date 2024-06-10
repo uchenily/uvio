@@ -21,15 +21,15 @@ public:
     TcpStream(std::unique_ptr<uv_tcp_t> socket)
         : tcp_handle_{std::move(socket)} {}
 
-    TcpStream(TcpStream &&other) noexcept {
+    TcpStream(TcpStream &&other) noexcept
+        : tcp_handle_{std::move(other.tcp_handle_)} {
+        other.tcp_handle_ = nullptr;
+    }
+    auto operator=(TcpStream &&other) noexcept -> TcpStream & {
         if (std::addressof(other) != this) {
             tcp_handle_ = std::move(other.tcp_handle_);
             other.tcp_handle_ = nullptr;
         }
-    }
-    auto operator=(TcpStream &&other) noexcept -> TcpStream & {
-        this->tcp_handle_ = std::move(other.tcp_handle_);
-        other.tcp_handle_ = nullptr;
         return *this;
     }
 
