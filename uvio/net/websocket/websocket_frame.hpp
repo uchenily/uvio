@@ -30,14 +30,14 @@ public:
     // server
     [[REMEMBER_CO_AWAIT]]
     auto send_response(const http::HttpResponse &resp) -> Task<Result<void>> {
-        co_return co_await http_codec_.Encode<void>(resp, buffered_writer_);
+        co_return co_await http_codec_.Encode(resp, buffered_writer_);
     }
 
     // server
     [[REMEMBER_CO_AWAIT]]
     auto recv_request() -> Task<Result<http::HttpRequest>> {
         http::HttpRequest req;
-        if (auto res = co_await http_codec_.Decode<void>(req, buffered_reader_);
+        if (auto res = co_await http_codec_.Decode(req, buffered_reader_);
             !res) {
             co_return unexpected{res.error()};
         }
@@ -47,15 +47,14 @@ public:
     // client
     [[REMEMBER_CO_AWAIT]]
     auto send_request(const http::HttpRequest &req) -> Task<Result<void>> {
-        co_return co_await http_codec_.Encode<void>(req, buffered_writer_);
+        co_return co_await http_codec_.Encode(req, buffered_writer_);
     }
 
     // client
     [[REMEMBER_CO_AWAIT]]
     auto recv_response() -> Task<Result<http::HttpResponse>> {
         http::HttpResponse resp;
-        if (auto res
-            = co_await http_codec_.Decode<void>(resp, buffered_reader_);
+        if (auto res = co_await http_codec_.Decode(resp, buffered_reader_);
             !res) {
             co_return unexpected{res.error()};
         }
@@ -66,7 +65,7 @@ public:
     auto recv() -> Task<Result<std::vector<char>>> {
         std::vector<char> payload;
         if (auto res
-            = co_await websocket_codec_.Decode<void>(payload, buffered_reader_);
+            = co_await websocket_codec_.Decode(payload, buffered_reader_);
             !res) {
             co_return unexpected{res.error()};
         }
@@ -79,8 +78,7 @@ public:
             .opcode = Opcode::TEXT,
             .message = message,
         };
-        co_return co_await websocket_codec_.Encode<void>(frame,
-                                                         buffered_writer_);
+        co_return co_await websocket_codec_.Encode(frame, buffered_writer_);
     }
 
     [[REMEMBER_CO_AWAIT]]
@@ -89,8 +87,7 @@ public:
             .opcode = Opcode::CLOSE,
             .message = {},
         };
-        co_return co_await websocket_codec_.Encode<void>(frame,
-                                                         buffered_writer_);
+        co_return co_await websocket_codec_.Encode(frame, buffered_writer_);
     }
 
     auto client_side() {

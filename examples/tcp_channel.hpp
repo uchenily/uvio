@@ -25,13 +25,13 @@ public:
 public:
     [[REMEMBER_CO_AWAIT]]
     auto Send(std::span<const char> message) -> Task<Result<void>> {
-        co_return co_await codec_.Encode<void>(message, buffered_writer_);
+        co_return co_await codec_.Encode(message, buffered_writer_);
     }
 
     [[REMEMBER_CO_AWAIT]]
     auto Recv() -> Task<Result<std::string>> {
         std::string message;
-        if (auto res = co_await codec_.Decode<void>(message, buffered_reader_);
+        if (auto res = co_await codec_.Decode(message, buffered_reader_);
             !res) {
             // D:\a\uvio\uvio\examples\tcp_channel.hpp(36): error C2872:
             // 'unexpected': ambiguous symbol

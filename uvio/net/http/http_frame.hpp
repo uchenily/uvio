@@ -28,14 +28,13 @@ public:
 public:
     [[REMEMBER_CO_AWAIT]]
     auto write_response(HttpResponse resp) -> Task<Result<void>> {
-        co_return co_await codec_.Encode<void>(resp, buffered_writer_);
+        co_return co_await codec_.Encode(resp, buffered_writer_);
     }
 
     [[REMEMBER_CO_AWAIT]]
     auto read_request() -> Task<Result<HttpRequest>> {
         HttpRequest req;
-        if (auto res = co_await codec_.Decode<void>(req, buffered_reader_);
-            !res) {
+        if (auto res = co_await codec_.Decode(req, buffered_reader_); !res) {
             co_return unexpected{res.error()};
         }
         co_return std::move(req);
