@@ -1,72 +1,22 @@
-#include "uvio/log.hpp"
-
-// #include <netdb.h>
+#include "uvio/debug.hpp"
 
 #include "uv.h"
 
 using namespace uvio::log;
 
-void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
-    (void) handle;
-    buf->base = new char[suggested_size];
-    buf->len = suggested_size;
-}
-
-void on_read(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
-    if (nread < 0) {
-        if (nread != UV_EOF) {
-            console.error("Read error {}",
-                          uv_err_name(static_cast<int>(nread)));
-        }
-        uv_close(reinterpret_cast<uv_handle_t *>(client), nullptr);
-        delete buf->base;
-        delete reinterpret_cast<uv_tcp_t *>(client);
-        return;
-    }
-
-    console.info(std::string_view{buf->base, static_cast<size_t>(nread)});
-    // delete buf->base;
-    // delete reinterpret_cast<uv_tcp_t *>(client);
-    uv_close(reinterpret_cast<uv_handle_t *>(client), [](uv_handle_t *handle) {
-        delete reinterpret_cast<uv_tcp_t *>(handle);
-    });
-}
-
-void on_connect(uv_connect_t *req, int status) {
+void on_resolved(uv_getaddrinfo_t * /*resolver*/,
+                 int              status,
+                 struct addrinfo *res) {
     if (status < 0) {
-        console.error("connect failed error {}", uv_err_name(status));
-        delete req;
+        LOG_ERROR("uv_getaddrinfo callback error {}", uv_err_name(status));
         return;
     }
 
-    uv_read_start(reinterpret_cast<uv_stream_t *>(req->handle),
-                  alloc_buffer,
-                  on_read);
-    delete req;
-}
-
-void on_resolved(uv_getaddrinfo_t *resolver, int status, struct addrinfo *res) {
-    (void) resolver;
-    if (status < 0) {
-        console.error("uv_getaddrinfo callback error {}", uv_err_name(status));
-        return;
-    }
-
-    std::array<char, 17> addr{};
+    std::array<char, 17> ipv4addr{};
     uv_ip4_name(reinterpret_cast<struct sockaddr_in *>(res->ai_addr),
-                addr.data(),
+                ipv4addr.data(),
                 16);
-    console.info(addr.data());
-
-    auto connect_req = new uv_connect_t;
-    auto socket = new uv_tcp_t;
-    uv_tcp_init(uv_default_loop(), socket);
-
-    uv_tcp_connect(connect_req,
-                   socket,
-                   reinterpret_cast<const struct sockaddr *>(res->ai_addr),
-                   on_connect);
-
+    LOG_INFO("{}", ipv4addr.data());
     uv_freeaddrinfo(res);
 }
 
@@ -77,17 +27,17 @@ auto main() -> int {
     hints.ai_protocol = IPPROTO_TCP;
     hints.ai_flags = 0;
 
-    uv_getaddrinfo_t resolver;
-    console.info("irc.libera.chat is... ");
+    uv_getaddrinfo_t req;
+    LOG_INFO("resolving address `baidu.com` ...");
     int ret = uv_getaddrinfo(uv_default_loop(),
-                             &resolver,
+                             &req,
                              on_resolved,
-                             "irc.libera.chat",
-                             "6667",
+                             "baidu.com",
+                             "443",
                              &hints);
 
     if (ret != 0) {
-        console.error("uv_getaddrinfo call error %s\n", uv_err_name(ret));
+        LOG_ERROR("uv_getaddrinfo call error %s\n", uv_err_name(ret));
         return 1;
     }
     return uv_run(uv_default_loop(), UV_RUN_DEFAULT);
