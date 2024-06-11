@@ -1,5 +1,7 @@
 #pragma once
 
+#include "uvio/common/expected.hpp"
+#include "uvio/common/result.hpp"
 #include <memory>
 #include <span>
 
@@ -38,5 +40,17 @@ public:
 private:
     std::shared_ptr<IO> stream_;
 };
+
+template <typename IO>
+auto reunite(OwnedReadHalf<IO>  &owned_read_half,
+             OwnedWriteHalf<IO> &owned_write_half) -> Result<IO> {
+    if (owned_read_half.stream_ != owned_write_half.stream_) {
+        return unexpected{make_uvio_error(Error::ReuniteError)};
+    }
+    owned_write_half.stream_.reset();
+    std::shared_ptr<IO> temp{nullptr};
+    temp.swap(owned_read_half.stream_);
+    return std::move(*temp);
+}
 
 } // namespace uvio::io

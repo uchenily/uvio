@@ -14,7 +14,8 @@ public:
     enum ErrorCode {
         UnexpectedEOF = 8000,
         WriteZero,
-        ResolvedFailed,
+        ReuniteError,
+        ResolveFailed,
         Unclassified,
     };
 
@@ -30,7 +31,9 @@ public:
             return "Read EOF too early";
         case WriteZero:
             return "Write return zero";
-        case ResolvedFailed:
+        case ReuniteError:
+            return "IO reunite error";
+        case ResolveFailed:
             return "DNS resolve failed";
         case Unclassified:
             return "Unclassified error";

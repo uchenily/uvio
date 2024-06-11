@@ -71,7 +71,7 @@ class DNS {
             if (!ip_address.empty()) {
                 return ip_address;
             }
-            return unexpected{make_uvio_error(Error::Unclassified)};
+            return unexpected{make_uvio_error(Error::ResolveFailed)};
         }
     };
 
