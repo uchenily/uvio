@@ -1,3 +1,11 @@
+// client:
+// curl -v http://www.baidu.com/ --proxy socks5://127.0.0.1:1080
+
+#if defined(_WIN32)
+#include <exception>
+// #include <eh.h> // `unexpected` symbol conflict
+#endif
+
 #include "uvio/core.hpp"
 #include "uvio/net.hpp"
 
@@ -268,10 +276,8 @@ private:
     }
 
 private:
-    BufferedReader buffered_reader_{io::OwnedReadHalf<TcpStream>{nullptr},
-                                    1024};
-    BufferedWriter buffered_writer_{io::OwnedWriteHalf<TcpStream>{nullptr},
-                                    1024};
+    BufferedReader buffered_reader_;
+    BufferedWriter buffered_writer_;
 };
 
 class Socks5Server {
