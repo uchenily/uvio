@@ -10,6 +10,8 @@ namespace uvio::io {
 template <typename IO>
 class OwnedReadHalf {
 public:
+    OwnedReadHalf() = default;
+
     OwnedReadHalf(std::shared_ptr<IO> stream)
         : stream_{std::move(stream)} {}
 
@@ -29,6 +31,8 @@ private:
 template <typename IO>
 class OwnedWriteHalf {
 public:
+    OwnedWriteHalf() = default;
+
     OwnedWriteHalf(std::shared_ptr<IO> stream)
         : stream_{std::move(stream)} {}
 

@@ -13,6 +13,8 @@ class BufWriter : public detail::ImplBufWrite<BufWriter<IO>> {
     friend class detail::ImplBufWrite<BufWriter<IO>>;
 
 public:
+    BufWriter() = default;
+
     BufWriter(IO &&io, std::size_t size)
         : io_{std::move(io)}
         , w_stream_{size} {}

@@ -41,10 +41,8 @@ public:
     }
 
 private:
-    BufferedReader buffered_reader_{io::OwnedReadHalf<TcpStream>{nullptr},
-                                    1024};
-    BufferedWriter buffered_writer_{io::OwnedWriteHalf<TcpStream>{nullptr},
-                                    1024};
+    BufferedReader buffered_reader_;
+    BufferedWriter buffered_writer_;
     HttpCodec      codec_{};
 };
 } // namespace uvio::net::http

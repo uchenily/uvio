@@ -14,6 +14,8 @@ class BufReader : public detail::ImplBufRead<BufReader<IO>> {
     friend class detail::ImplBufRead<BufReader<IO>>;
 
 public:
+    BufReader() = default;
+
     BufReader(IO &&io, std::size_t size)
         : io_{std::move(io)}
         , r_stream_{size} {}
