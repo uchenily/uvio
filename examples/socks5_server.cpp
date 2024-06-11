@@ -1,3 +1,6 @@
+// client:
+// curl -v http://www.baidu.com/ --proxy socks5://127.0.0.1:1080
+
 #include "uvio/core.hpp"
 #include "uvio/net.hpp"
 
@@ -52,7 +55,7 @@ public:
         co_await buffered_reader_.read_exact(bytes2);
 
         if (bytes2[0] != 0x05) {
-            co_return unexpected{make_uvio_error(Error::Unclassified)};
+            co_return uvio::unexpected{make_uvio_error(Error::Unclassified)};
         }
         auto              n_methods = bytes2[1];
         std::vector<char> methods(n_methods);
@@ -104,7 +107,7 @@ public:
         std::array<char, 4> bytes4{};
         co_await buffered_reader_.read_exact(bytes4);
         if (bytes4[0] != 0x05) {
-            co_return unexpected{make_uvio_error(Error::Unclassified)};
+            co_return uvio::unexpected{make_uvio_error(Error::Unclassified)};
         }
 
         if (bytes4[1] == 0x01) {
@@ -117,7 +120,7 @@ public:
             // udp associate
             request.cmd = Cmd::UDP_ASSOCIATE;
         } else {
-            co_return unexpected{make_uvio_error(Error::Unclassified)};
+            co_return uvio::unexpected{make_uvio_error(Error::Unclassified)};
         }
 
         ASSERT(bytes4[2] == 0x00);
@@ -140,7 +143,7 @@ public:
             // TODO(x)
             // request.addr =
         } else {
-            co_return unexpected{make_uvio_error(Error::Unclassified)};
+            co_return uvio::unexpected{make_uvio_error(Error::Unclassified)};
         }
 
         co_return request;
@@ -209,19 +212,19 @@ public:
         // TODO(x): do resolve if domain name?
         auto ok = co_await DNS::resolve(req.addr, std::to_string(req.port));
         if (!ok) {
-            co_return unexpected{ok.error()};
+            co_return uvio::unexpected{ok.error()};
         }
 
         auto remote = co_await TcpStream::connect(ok.value(), 80);
         if (!remote) {
             LOG_ERROR("Connect {}:{} failed", req.addr, req.port);
-            co_return unexpected{remote.error()};
+            co_return uvio::unexpected{remote.error()};
         }
 
         // auto has_local
         //     = reunite(buffered_reader_.inner(), buffered_writer_.inner());
         // if (!has_local) {
-        //     co_return unexpected{has_local.error()};
+        //     co_return uvio::unexpected{has_local.error()};
         // }
         // auto local = std::move(has_local.value());
 
@@ -268,10 +271,8 @@ private:
     }
 
 private:
-    BufferedReader buffered_reader_{io::OwnedReadHalf<TcpStream>{nullptr},
-                                    1024};
-    BufferedWriter buffered_writer_{io::OwnedWriteHalf<TcpStream>{nullptr},
-                                    1024};
+    BufferedReader buffered_reader_;
+    BufferedWriter buffered_writer_;
 };
 
 class Socks5Server {

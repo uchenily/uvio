@@ -14,7 +14,6 @@ namespace uvio::net {
 class DNS {
 
     struct ResolveAwaiter {
-
         std::coroutine_handle<> handle_;
         uv_getaddrinfo_t        req_{};
         std::string             address_;
