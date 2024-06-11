@@ -3,6 +3,7 @@ all_examples_sources = [
   'channel_server.cpp',
   'channel_client.cpp',
   'http_server.cpp',
+  'socks5_server.cpp',
 ]
 
 foreach source: all_examples_sources
