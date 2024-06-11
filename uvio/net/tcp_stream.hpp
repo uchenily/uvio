@@ -113,10 +113,11 @@ public:
                 auto nread = this->nread_;
                 if (nread < 0) {
                     if (nread == UV_EOF) {
-                        return unexpected{
+                        return std::unexpected{
                             make_uvio_error(Error::UnexpectedEOF)};
                     } else {
-                        return unexpected{make_uvio_error(Error::Unclassified)};
+                        return std::unexpected{
+                            make_uvio_error(Error::Unclassified)};
                     }
                 }
                 this->nread_ = 0;
@@ -138,10 +139,11 @@ public:
         while (!buf.empty()) {
             ret = co_await read(buf);
             if (!ret) {
-                co_return unexpected{ret.error()};
+                co_return std::unexpected{ret.error()};
             }
             if (ret.value() == 0) {
-                co_return unexpected{make_uvio_error(Error::UnexpectedEOF)};
+                co_return std::unexpected{
+                    make_uvio_error(Error::UnexpectedEOF)};
             }
 
             buf = buf.subspan(ret.value(), buf.size_bytes() - ret.value());
@@ -199,10 +201,11 @@ public:
             auto await_resume() noexcept -> Result<std::size_t> {
                 handle_ = nullptr;
                 if (status_ != 0) {
-                    return unexpected{make_uvio_error(Error::Unclassified)};
+                    return std::unexpected{
+                        make_uvio_error(Error::Unclassified)};
                 }
                 if (nwritten_ == 0) {
-                    return unexpected{make_uvio_error(Error::WriteZero)};
+                    return std::unexpected{make_uvio_error(Error::WriteZero)};
                 }
                 return nwritten_;
             }

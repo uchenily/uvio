@@ -49,7 +49,7 @@ template <typename IO>
 auto reunite(OwnedReadHalf<IO>  &owned_read_half,
              OwnedWriteHalf<IO> &owned_write_half) -> Result<IO> {
     if (owned_read_half.stream_ != owned_write_half.stream_) {
-        return unexpected{make_uvio_error(Error::ReuniteError)};
+        return std::unexpected{make_uvio_error(Error::ReuniteError)};
     }
     owned_write_half.stream_.reset();
     std::shared_ptr<IO> temp{nullptr};

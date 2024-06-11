@@ -53,7 +53,7 @@ public:
             auto ret = co_await static_cast<Derived *>(this)->io_.write(
                 static_cast<Derived *>(this)->w_stream_.r_slice());
             if (!ret) {
-                co_return unexpected{ret.error()};
+                co_return std::unexpected{ret.error()};
             }
 
             static_cast<Derived *>(this)->w_stream_.r_increase(
@@ -66,10 +66,10 @@ public:
     [[REMEMBER_CO_AWAIT]]
     auto write_all(std::span<const char> buf) noexcept -> Task<Result<void>> {
         if (auto ret = co_await write(buf); !ret) {
-            co_return unexpected{ret.error()};
+            co_return std::unexpected{ret.error()};
         }
         if (auto ret = co_await flush(); !ret) {
-            co_return unexpected{ret.error()};
+            co_return std::unexpected{ret.error()};
         }
         co_return Result<void>{};
     }

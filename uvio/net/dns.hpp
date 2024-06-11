@@ -70,7 +70,7 @@ class DNS {
             if (!ip_address.empty()) {
                 return ip_address;
             }
-            return unexpected{make_uvio_error(Error::ResolveFailed)};
+            return std::unexpected{make_uvio_error(Error::ResolveFailed)};
         }
     };
 

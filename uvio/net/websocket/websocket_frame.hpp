@@ -39,7 +39,7 @@ public:
         http::HttpRequest req;
         if (auto res = co_await http_codec_.Decode(req, buffered_reader_);
             !res) {
-            co_return unexpected{res.error()};
+            co_return std::unexpected{res.error()};
         }
         co_return std::move(req);
     }
@@ -56,7 +56,7 @@ public:
         http::HttpResponse resp;
         if (auto res = co_await http_codec_.Decode(resp, buffered_reader_);
             !res) {
-            co_return unexpected{res.error()};
+            co_return std::unexpected{res.error()};
         }
         co_return std::move(resp);
     }
@@ -67,7 +67,7 @@ public:
         if (auto res
             = co_await websocket_codec_.Decode(payload, buffered_reader_);
             !res) {
-            co_return unexpected{res.error()};
+            co_return std::unexpected{res.error()};
         }
         co_return std::move(payload);
     }

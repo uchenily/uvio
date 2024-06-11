@@ -9,13 +9,13 @@ public:
     auto decode(std::string &message, Reader &reader) -> Task<Result<void>> {
         auto has_length = co_await decode_length(reader);
         if (!has_length) {
-            co_return unexpected{has_length.error()};
+            co_return std::unexpected{has_length.error()};
         }
         auto length = has_length.value();
 
         message.resize(length);
         if (auto ret = co_await reader.read_exact(message); !ret) {
-            co_return unexpected{ret.error()};
+            co_return std::unexpected{ret.error()};
         }
         co_return Result<void>{};
     }
@@ -28,7 +28,7 @@ public:
             co_return ret;
         }
         if (auto ret = co_await writer.write(message); !ret) {
-            co_return unexpected{ret.error()};
+            co_return std::unexpected{ret.error()};
         }
         if (auto ret = co_await writer.flush(); !ret) {
             co_return ret;
@@ -48,7 +48,7 @@ private:
         for (int i = 0; i < fixed_length_bytes; ++i) {
             auto ret = co_await reader.read_exact(bytes);
             if (!ret) {
-                co_return unexpected{ret.error()};
+                co_return std::unexpected{ret.error()};
             }
             value |= static_cast<uint32_t>(bytes[0] & 0xFF) << (i * 8);
         }
@@ -63,7 +63,7 @@ private:
         for (int i = 0; i < fixed_length_bytes; ++i) {
             bytes[0] = static_cast<char>((value & 0xFF) | 0x00);
             if (auto ret = co_await writer.write(bytes); !ret) {
-                co_return unexpected{ret.error()};
+                co_return std::unexpected{ret.error()};
             }
             value >>= 8;
         }

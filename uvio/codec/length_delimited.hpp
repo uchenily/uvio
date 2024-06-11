@@ -14,7 +14,7 @@ public:
         // auto ret = co_await reader.read_exact(
         //     {reinterpret_cast<char *>(msg_len.data()), msg_len.size()});
         // if (!ret) {
-        //     co_return unexpected{ret.error()};
+        //     co_return std::unexpected{ret.error()};
         // }
         //
         // auto length = msg_len[0] << 24 | msg_len[1] << 16 | msg_len[2] << 8
@@ -22,13 +22,13 @@ public:
 
         auto has_length = co_await decode_length(reader);
         if (!has_length) {
-            co_return unexpected{has_length.error()};
+            co_return std::unexpected{has_length.error()};
         }
         auto length = has_length.value();
 
         message.resize(length);
         if (auto ret = co_await reader.read_exact(message); !ret) {
-            co_return unexpected{ret.error()};
+            co_return std::unexpected{ret.error()};
         }
         co_return Result<void>{};
     }
@@ -47,7 +47,7 @@ public:
         // auto ret = co_await writer.write(
         //     {reinterpret_cast<char *>(msg_len.data()), msg_len.size()});
         // if (!ret) {
-        //     co_return unexpected{ret.error()};
+        //     co_return std::unexpected{ret.error()};
         // }
 
         uint64_t length = message.size();
@@ -55,7 +55,7 @@ public:
             co_return ret;
         }
         if (auto ret = co_await writer.write(message); !ret) {
-            co_return unexpected{ret.error()};
+            co_return std::unexpected{ret.error()};
         }
         if (auto ret = co_await writer.flush(); !ret) {
             co_return ret;
@@ -74,7 +74,7 @@ private:
         for (int i = 0; i < max_varint_bytes; ++i) {
             auto ret = co_await reader.read_exact(bytes);
             if (!ret) {
-                co_return unexpected{ret.error()};
+                co_return std::unexpected{ret.error()};
             }
             value |= static_cast<uint64_t>(bytes[0] & 0x7F) << (i * 7);
             if ((bytes[0] & 0x80) == 0) {
@@ -82,7 +82,7 @@ private:
                 co_return value;
             }
         }
-        co_return unexpected{make_uvio_error(Error::Unclassified)};
+        co_return std::unexpected{make_uvio_error(Error::Unclassified)};
     }
 
     template <typename Writer>
@@ -94,7 +94,7 @@ private:
             bytes[0] = static_cast<char>((value & 0x7F)
                                          | (((value >> 7) == 0) ? 0x00 : 0x80));
             if (auto ret = co_await writer.write(bytes); !ret) {
-                co_return unexpected{ret.error()};
+                co_return std::unexpected{ret.error()};
             }
             value >>= 7;
         } while (value != 0);

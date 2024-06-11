@@ -38,7 +38,7 @@ public:
             // C:\Program Files\Microsoft Visual
             // Studio\2022\Enterprise\VC\Tools\MSVC\14.40.33807\include\eh.h(33):
             // note: could be 'void unexpected(void) noexcept(false)'
-            co_return uvio::unexpected{res.error()};
+            co_return std::unexpected{res.error()};
         }
         co_return std::move(message);
     }

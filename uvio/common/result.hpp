@@ -59,6 +59,6 @@ static inline auto make_sys_error(int error_code) -> Error {
 }
 
 template <typename T>
-using Result = expected<T, Error>;
+using Result = std::expected<T, Error>;
 
 } // namespace uvio

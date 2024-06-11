@@ -83,7 +83,7 @@ public:
             auto ret = co_await static_cast<Derived *>(this)->io_.read(
                 static_cast<Derived *>(this)->r_stream_.w_slice());
             if (!ret) {
-                co_return unexpected{ret.error()};
+                co_return std::unexpected{ret.error()};
             }
             static_cast<Derived *>(this)->r_stream_.w_increase(ret.value());
 
@@ -118,7 +118,7 @@ public:
             ret = co_await static_cast<Derived *>(this)->io_.read(
                 static_cast<Derived *>(this)->r_stream_.w_slice());
             if (!ret) {
-                co_return unexpected{ret.error()};
+                co_return std::unexpected{ret.error()};
             }
             // if (ret.value() == 0) {
             //     break;
