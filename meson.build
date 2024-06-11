@@ -9,9 +9,23 @@ project('uvio', 'cpp',
 
 compile_args = []
 
+
 includes = include_directories('.')
 
 cpp = meson.get_compiler('cpp')
+# from https://github.com/archibate/debug-hpp/blob/main/msvc_joke.txt
+if cpp.get_id() == 'msvc'
+  add_project_arguments([
+    '/DNOMINMAX',
+    '/D_USE_MATH_DEFINES',
+    '/utf-8',
+    '/bigobj',
+    '/Zc:preprocessor',
+    '/permissive-',
+    '/EHsc'
+  ], language: 'cpp')
+endif
+
 libuv_dep = dependency('libuv')
 libbfd_dep = cpp.find_library('bfd', required: false)
 curl_dep = cpp.find_library('curl', required: false)
