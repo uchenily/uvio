@@ -18,8 +18,12 @@ namespace socks5 {
 using namespace uvio;
 using namespace uvio::net;
 
+// with buf
 using BufferedReader = TcpReader;
 using BufferedWriter = TcpWriter;
+// no buf
+using Reader = io::OwnedReadHalf<TcpStream>;
+using Writer = io::OwnedWriteHalf<TcpStream>;
 
 // class Socks5Codec : public Codec<Socks5Codec> {};
 
@@ -227,19 +231,14 @@ public:
             co_return uvio::unexpected{remote.error()};
         }
 
-        // auto has_local
-        //     = reunite(buffered_reader_.inner(), buffered_writer_.inner());
-        // if (!has_local) {
-        //     co_return uvio::unexpected{has_local.error()};
-        // }
-        // auto local = std::move(has_local.value());
+        auto local
+            = reunite(buffered_reader_.inner(), buffered_writer_.inner());
+        if (!local) {
+            co_return uvio::unexpected{local.error()};
+        }
 
-        auto [reader, writer] = remote->into_split();
-        auto [r_reader, r_writer]
-            = std::make_pair(BufferedReader{std::move(reader), BUFSIZE},
-                             BufferedWriter{std::move(writer), BUFSIZE});
-        auto [l_reader, l_writer] = std::make_pair(std::move(buffered_reader_),
-                                                   std::move(buffered_writer_));
+        auto [l_reader, l_writer] = local->into_split();
+        auto [r_reader, r_writer] = remote->into_split();
 
         // local -> remote
         // remote -> local
@@ -249,7 +248,7 @@ public:
     }
 
 private:
-    auto forward(BufferedReader reader, BufferedWriter writer) -> Task<> {
+    auto forward(Reader reader, Writer writer) -> Task<> {
         // std::array<char, 1024> buf{};
         std::vector<char> buf(static_cast<size_t>(BUFSIZE));
         while (true) {
@@ -259,8 +258,7 @@ private:
                 co_return;
             }
             LOG_DEBUG("{}", std::string_view{buf.data(), rret.value()});
-            if (auto wret
-                = co_await writer.write_all({buf.data(), rret.value()});
+            if (auto wret = co_await writer.write({buf.data(), rret.value()});
                 !wret) {
                 LOG_ERROR("{}", wret.error().message());
                 co_return;

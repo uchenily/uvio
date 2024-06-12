@@ -24,6 +24,16 @@ public:
         return stream_->read_exact(buf);
     }
 
+    auto inner() -> IO & {
+        return *stream_.get();
+    }
+
+    auto take_inner() -> IO {
+        std::shared_ptr<IO> temp{nullptr};
+        temp.swap(this->stream_);
+        return std::move(*temp);
+    }
+
 private:
     std::shared_ptr<IO> stream_;
 };
@@ -41,6 +51,14 @@ public:
         return stream_->write(buf);
     }
 
+    auto reset() {
+        this->stream_.reset();
+    }
+
+    auto inner() -> IO & {
+        return *stream_.get();
+    }
+
 private:
     std::shared_ptr<IO> stream_;
 };
@@ -48,13 +66,12 @@ private:
 template <typename IO>
 auto reunite(OwnedReadHalf<IO>  &owned_read_half,
              OwnedWriteHalf<IO> &owned_write_half) -> Result<IO> {
-    if (owned_read_half.stream_ != owned_write_half.stream_) {
+    if (std::addressof(owned_read_half.inner())
+        != std::addressof(owned_write_half.inner())) {
         return unexpected{make_uvio_error(Error::ReuniteError)};
     }
-    owned_write_half.stream_.reset();
-    std::shared_ptr<IO> temp{nullptr};
-    temp.swap(owned_read_half.stream_);
-    return std::move(*temp);
+    owned_write_half.reset();
+    return owned_read_half.take_inner();
 }
 
 } // namespace uvio::io
