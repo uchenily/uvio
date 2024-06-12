@@ -13,6 +13,8 @@ void on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
             LOG_ERROR("Read error: {}", uv_strerror(static_cast<int>(nread)));
         }
         delete[] buf->base;
+        uv_tty_reset_mode();
+        uv_read_stop(stream);
         uv_close(reinterpret_cast<uv_handle_t *>(stream),
                  [](uv_handle_t *handle) {
                      (void) handle;
@@ -27,6 +29,7 @@ void on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
         if (buf->base[0] == 0x03 || buf->base[0] == 0x04) {
             delete[] buf->base;
             uv_tty_reset_mode();
+            uv_read_stop(stream);
             uv_close(reinterpret_cast<uv_handle_t *>(stream),
                      [](uv_handle_t *handle) {
                          (void) handle;
