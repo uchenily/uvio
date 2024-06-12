@@ -11,6 +11,7 @@
 #include <memory>
 
 #include "uv.h"
+#include "uvio/net/tcp_util.hpp"
 
 namespace uvio::net {
 
@@ -26,6 +27,13 @@ public:
         other.tcp_handle_ = nullptr;
     }
     auto operator=(TcpStream &&other) noexcept -> TcpStream & {
+        if (tcp_handle_) {
+            uv_close(reinterpret_cast<uv_handle_t *>(tcp_handle_.release()),
+                     [](uv_handle_t *handle) {
+                         delete reinterpret_cast<uv_tcp_t *>(handle);
+                     });
+        }
+
         if (std::addressof(other) != this) [[likely]] {
             tcp_handle_ = std::move(other.tcp_handle_);
             other.tcp_handle_ = nullptr;
@@ -92,7 +100,10 @@ public:
                                     "Read error: {}",
                                     uv_err_name(static_cast<int>(nread)));
                             } else {
-                                console.warn("Tcp stream disconnected");
+                                auto peer = PeerAddress(data->socket_);
+                                LOG_DEBUG("{}:{} closed",
+                                          peer.ipv4(),
+                                          peer.port());
                             }
                         }
                         LOG_DEBUG("read {} bytes", nread);
