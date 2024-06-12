@@ -1,11 +1,17 @@
 // client:
+// (local resolve)
 // curl -v http://www.baidu.com/ --proxy socks5://127.0.0.1:1080
+// (remote resolve)
+// curl -v http://www.baidu.com/ --proxy socks5h://127.0.0.1:1080
 
 #include "uvio/core.hpp"
 #include "uvio/net.hpp"
 
 #include <array>
 #include <sstream>
+
+#define PORT 1080
+#define BUFSIZE (static_cast<size_t>(16 * 1024))
 
 namespace socks5 {
 
@@ -39,8 +45,8 @@ public:
 public:
     explicit Socks5Framed(TcpStream &&stream) {
         auto [reader, writer] = std::move(stream).into_split();
-        buffered_reader_ = BufferedReader{std::move(reader), 1024};
-        buffered_writer_ = BufferedWriter{std::move(writer), 1024};
+        buffered_reader_ = BufferedReader{std::move(reader), BUFSIZE};
+        buffered_writer_ = BufferedWriter{std::move(writer), BUFSIZE};
     }
 
 public:
@@ -198,7 +204,7 @@ public:
         co_await buffered_writer_.write(bytes4);
 
         // TODO(x)
-        auto port = net::byteorder::hton16(1080);
+        auto port = net::byteorder::hton16(PORT);
         bytes2[0] = static_cast<char>(port & 0xFF);
         bytes2[1] = static_cast<char>((port >> 8) & 0xFF);
         co_await buffered_writer_.write(bytes2);
@@ -230,8 +236,8 @@ public:
 
         auto [reader, writer] = remote->into_split();
         auto [r_reader, r_writer]
-            = std::make_pair(BufferedReader{std::move(reader), 1024},
-                             BufferedWriter{std::move(writer), 1024});
+            = std::make_pair(BufferedReader{std::move(reader), BUFSIZE},
+                             BufferedWriter{std::move(writer), BUFSIZE});
         auto [l_reader, l_writer] = std::make_pair(std::move(buffered_reader_),
                                                    std::move(buffered_writer_));
 
@@ -244,7 +250,8 @@ public:
 
 private:
     auto forward(BufferedReader reader, BufferedWriter writer) -> Task<> {
-        std::array<char, 1024> buf{};
+        // std::array<char, 1024> buf{};
+        std::vector<char> buf(static_cast<size_t>(BUFSIZE));
         while (true) {
             auto rret = co_await reader.read(buf);
             if (!rret) {
@@ -334,6 +341,6 @@ private:
 } // namespace socks5
 
 auto main() -> int {
-    socks5::Socks5Server proxy{"0.0.0.0", 1080};
+    socks5::Socks5Server proxy{"0.0.0.0", PORT};
     proxy.run();
 }
