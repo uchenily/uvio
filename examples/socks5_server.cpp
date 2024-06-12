@@ -6,6 +6,7 @@
 
 #include "uvio/core.hpp"
 #include "uvio/net.hpp"
+#include "uvio/net/endian.hpp"
 
 #include <array>
 #include <sstream>
@@ -114,6 +115,7 @@ public:
         //      o  DST.ADDR       desired destination address
         //      o  DST.PORT desired destination port in network octet
         //         order
+        std::array<char, 2> bytes2{};
         std::array<char, 4> bytes4{};
         co_await buffered_reader_.read_exact(bytes4);
         if (bytes4[0] != 0x05) {
@@ -139,6 +141,10 @@ public:
             // ipv4
             co_await buffered_reader_.read_exact(bytes4);
             request.addr = ip_to_string(bytes4);
+
+            co_await buffered_reader_.read_exact(bytes2);
+            uint16_t port = bytes2[0] | bytes2[1] << 8;
+            request.port = net::byteorder::ntoh16(port);
         } else if (bytes4[3] == 0x03) {
             // domain name
             std::array<char, 1> byte{};
@@ -146,12 +152,22 @@ public:
             std::vector<char> buf(byte[0]);
             co_await buffered_reader_.read_exact(buf);
             request.addr = std::string{buf.data(), buf.size()};
+            LOG_DEBUG("request.addr: {}", request.addr);
+
+            co_await buffered_reader_.read_exact(bytes2);
+            uint16_t port = bytes2[0] | bytes2[1] << 8;
+            request.port = net::byteorder::ntoh16(port);
+            LOG_DEBUG("request.port: {}", request.port);
         } else if (bytes4[3] == 0x04) {
             // ipv6
             std::vector<char> buf(16);
             co_await buffered_reader_.read_exact(buf);
             // TODO(x)
             // request.addr =
+
+            co_await buffered_reader_.read_exact(bytes2);
+            uint16_t port = bytes2[0] | bytes2[1] << 8;
+            request.port = net::byteorder::ntoh16(port);
         } else {
             co_return uvio::unexpected{make_uvio_error(Error::Unclassified)};
         }
@@ -201,14 +217,19 @@ public:
         bytes4[3] = 0x01;
         co_await buffered_writer_.write(bytes4);
 
+        // 这个地址似乎并没有什么用, 客户端早就已经知道代理服务地址了
         bytes4[0] = 127;
-        bytes4[0] = 0;
-        bytes4[0] = 0;
-        bytes4[0] = 1;
+        bytes4[1] = 0;
+        bytes4[2] = 0;
+        bytes4[3] = 1;
+        // host address -> network address
+
         co_await buffered_writer_.write(bytes4);
 
         // TODO(x)
-        auto port = net::byteorder::hton16(PORT);
+        // auto port = net::byteorder::hton16(PORT);
+        // 端口不设置测试好像也没问题
+        auto port = net::byteorder::hton16(0);
         bytes2[0] = static_cast<char>(port & 0xFF);
         bytes2[1] = static_cast<char>((port >> 8) & 0xFF);
         co_await buffered_writer_.write(bytes2);
@@ -225,7 +246,7 @@ public:
             co_return uvio::unexpected{ok.error()};
         }
 
-        auto remote = co_await TcpStream::connect(ok.value(), 80);
+        auto remote = co_await TcpStream::connect(ok.value(), req.port);
         if (!remote) {
             LOG_ERROR("Connect {}:{} failed", req.addr, req.port);
             co_return uvio::unexpected{remote.error()};
@@ -258,11 +279,13 @@ private:
                 co_return;
             }
             LOG_DEBUG("{}", std::string_view{buf.data(), rret.value()});
-            if (auto wret = co_await writer.write({buf.data(), rret.value()});
-                !wret) {
+            LOG_DEBUG("rret: {}", rret.value());
+            auto wret = co_await writer.write({buf.data(), rret.value()});
+            if (!wret) {
                 LOG_ERROR("{}", wret.error().message());
                 co_return;
             }
+            ASSERT(rret.value() == wret.value());
         }
     }
 
