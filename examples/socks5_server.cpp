@@ -362,6 +362,7 @@ private:
 } // namespace socks5
 
 auto main() -> int {
+    signal(SIGPIPE, SIG_IGN);
     socks5::Socks5Server proxy{"0.0.0.0", PORT};
     proxy.run();
 }
