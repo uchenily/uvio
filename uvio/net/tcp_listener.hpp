@@ -4,6 +4,7 @@
 #include "uvio/debug.hpp"
 #include "uvio/macros.hpp"
 #include "uvio/net/tcp_stream.hpp"
+#include "uvio/net/tcp_util.hpp"
 
 #include <coroutine>
 #include <memory>
@@ -48,6 +49,8 @@ class TcpListener {
             uv_check(uv_accept(reinterpret_cast<uv_stream_t *>(server_),
                                reinterpret_cast<uv_stream_t *>(client_.get())));
 
+            auto peer = PeerAddress(client_.get());
+            LOG_DEBUG("{}:{} is connected", peer.ipv4(), peer.port());
             return TcpStream{std::move(client_)};
         }
     };
