@@ -20,6 +20,7 @@ all_tests_sources = [
   'test_buffered2.cpp',
   'test_coredump.cpp',
   'test_caseinsensitive.cpp',
+  'test_tty.cpp',
 ]
 
 # or
