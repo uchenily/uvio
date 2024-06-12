@@ -1,5 +1,14 @@
-#include "uv.h"
 #include "uvio/debug.hpp"
+
+#if !defined(STDIN_FILENO)
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+#endif
+
+// uv.h 不要放到第一行
+// https://github.com/uchenily/uvio/actions/runs/9477525962/job/26112232763
+#include "uv.h"
 
 void on_alloc(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
     (void) handle;
