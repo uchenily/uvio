@@ -152,12 +152,12 @@ public:
             std::vector<char> buf(byte[0]);
             co_await buffered_reader_.read_exact(buf);
             request.addr = std::string{buf.data(), buf.size()};
-            LOG_DEBUG("request.addr: {}", request.addr);
+            // LOG_DEBUG("request.addr: {}", request.addr);
 
             co_await buffered_reader_.read_exact(bytes2);
             uint16_t port = bytes2[0] | bytes2[1] << 8;
             request.port = net::byteorder::ntoh16(port);
-            LOG_DEBUG("request.port: {}", request.port);
+            // LOG_DEBUG("request.port: {}", request.port);
         } else if (bytes4[3] == 0x04) {
             // ipv6
             std::vector<char> buf(16);
@@ -278,8 +278,8 @@ private:
                 LOG_ERROR("{}", rret.error().message());
                 co_return;
             }
-            LOG_DEBUG("{}", std::string_view{buf.data(), rret.value()});
-            LOG_DEBUG("rret: {}", rret.value());
+            // LOG_DEBUG("{}", std::string_view{buf.data(), rret.value()});
+            // LOG_DEBUG("rret: {}", rret.value());
             auto wret = co_await writer.write({buf.data(), rret.value()});
             if (!wret) {
                 LOG_ERROR("{}", wret.error().message());
