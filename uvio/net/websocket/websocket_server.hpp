@@ -77,6 +77,10 @@ private:
             co_await websocket_framed.send_response(resp);
 
             if (websocket_handler_) {
+                // TODO(x): 创建两个协程 (参照:
+                // https://github.com/python-websockets/websockets/blob/12.0/src/websockets/legacy/protocol.py)
+                // data_transfer(): 处理数据传输
+                // keepalive_ping(): 处理ping/pong帧
                 co_await websocket_handler_(websocket_framed);
             }
             co_return;

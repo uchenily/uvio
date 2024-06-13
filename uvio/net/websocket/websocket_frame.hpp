@@ -81,6 +81,24 @@ public:
         co_return co_await websocket_codec_.Encode(frame, buffered_writer_);
     }
 
+    // [[REMEMBER_CO_AWAIT]]
+    // auto send_ping(std::span<char> message = {}) -> Task<Result<void>> {
+    //     WebsocketFrame frame{
+    //         .opcode = Opcode::PING,
+    //         .message = message,
+    //     };
+    //     co_return co_await websocket_codec_.Encode(frame, buffered_writer_);
+    // }
+    //
+    // [[REMEMBER_CO_AWAIT]]
+    // auto send_pong(std::span<char> message = {}) -> Task<Result<void>> {
+    //     WebsocketFrame frame{
+    //         .opcode = Opcode::PONG,
+    //         .message = message,
+    //     };
+    //     co_return co_await websocket_codec_.Encode(frame, buffered_writer_);
+    // }
+
     [[REMEMBER_CO_AWAIT]]
     auto close() -> Task<Result<void>> {
         WebsocketFrame frame{

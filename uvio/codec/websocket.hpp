@@ -13,12 +13,14 @@ public:
     auto decode(std::vector<char> &payload, Reader &reader)
         -> Task<Result<void>> {
         // https://github.com/python-websockets/websockets/blob/12.0/src/websockets/legacy/framing.py
-        std::array<char, 2>          buf;
+        std::array<char, 2>          buf{};
         std::array<char, 4>          mask_bits{};
         std::array<unsigned char, 8> buf8{};
         co_await reader.read_exact(buf);
         bool fin = buf[0] & 0b100000000;
         auto opcode = buf[0] & 0b00001111;
+
+        // TODO(x)
         ASSERT(fin);
         ASSERT(opcode == (int) Opcode::TEXT);
 
