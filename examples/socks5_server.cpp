@@ -362,7 +362,9 @@ private:
 } // namespace socks5
 
 auto main() -> int {
+#if !defined(_WIN32)
     signal(SIGPIPE, SIG_IGN); // uv_signal_start(signal, callback, signum)
+#endif
     socks5::Socks5Server proxy{"0.0.0.0", PORT};
     proxy.run();
 }
