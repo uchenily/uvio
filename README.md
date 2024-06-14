@@ -13,7 +13,7 @@ C++20 coroutines + libuv
 
 ## 示例
 
-tcp echo server
+<details open><summary>tcp echo server</summary>
 
 ```c++
 #include "uvio/core.hpp"
@@ -64,6 +64,8 @@ telnet localhost 8000
 # 或者
 nc localhost 8000 -v
 ```
+
+</details>
 
 ## 功能
 
