@@ -152,6 +152,23 @@ auto main() -> int {
 
 </details>
 
+<details><summary>socks5 server</summary>
+
+完整代码请查看 [socks5_server.cpp](./examples/socks5_server.cpp)
+
+```cpp
+auto main() -> int {
+    socks5::Socks5Server proxy{"0.0.0.0", 1080};
+    proxy.run();
+}
+```
+
+在使用浏览器情况下, 可以安装 `SwitchyOmega` 插件测试
+
+在终端下可以使用 curl 命令进行测试: `curl -v http://www.baidu.com/ --proxy socks5://127.0.0.1:1080`
+
+</details>
+
 ## 功能
 
 - [x] 异步TCP
