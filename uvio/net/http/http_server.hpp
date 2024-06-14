@@ -20,7 +20,7 @@ public:
         , port_{port} {}
 
 public:
-    auto set_handler(std::string_view uri, HandlerFunc &&func) {
+    auto add_route(std::string_view uri, HandlerFunc &&func) {
         map_handles_[uri] = std::move(func);
     }
 
