@@ -93,11 +93,70 @@ curl localhost:8000/ -v
 
 </details>
 
+<details open><summary>websocket server/client</summary>
+
+```cpp
+#include "uvio/net/http.hpp"
+#include "uvio/net/websocket.hpp"
+
+using namespace uvio::net::http;
+using namespace uvio::net;
+
+auto process_message(websocket::WebsocketFramed &channel) -> Task<> {
+    // Ignore errors
+    for (int i = 0; i < 64; i++) {
+        auto msg = (co_await channel.recv()).value();
+        LOG_INFO("Received: `{}`", std::string_view{msg.data(), msg.size()});
+
+        co_await channel.send(msg);
+    }
+    co_await channel.close();
+    co_return;
+}
+
+auto main() -> int {
+    websocket::WebsocketServer server{"0.0.0.0", 8000};
+    server.add_route("/", [](const HttpRequest &req, HttpResponse &resp) {
+        resp.body = std::format("{} {}\r\nhello", req.method, req.uri);
+    });
+    server.handle_message(process_message);
+    server.run();
+}
+```
+
+```cpp
+#include "uvio/net/websocket.hpp"
+
+using namespace uvio::net;
+using namespace uvio;
+
+auto process_message(websocket::WebsocketFramed &channel) -> Task<> {
+    // Ignore errors
+    for (int i = 0; i < 64; i++) {
+        auto msg = std::format("test message {} from client", i);
+        co_await channel.send(msg);
+
+        auto msg2 = (co_await channel.recv()).value();
+        LOG_INFO("Received: `{}`", std::string_view{msg2.data(), msg2.size()});
+    }
+    co_await channel.close();
+    co_return;
+}
+
+auto main() -> int {
+    websocket::WebsocketClient client{"127.0.0.1", 8000};
+    client.handle_message(process_message);
+    client.run();
+}
+```
+
+</details>
+
 ## 功能
 
 - [x] 异步TCP
 - [ ] 异步UDP
-- [ ] 异步DNS解析
+- [x] 异步DNS解析
 - [ ] 异步文件IO
 - [x] 计时器
 - [ ] TTY

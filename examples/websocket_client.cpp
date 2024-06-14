@@ -1,8 +1,7 @@
-#include "uvio/net/http.hpp"
 #include "uvio/net/websocket.hpp"
 
-using namespace uvio::net::http;
 using namespace uvio::net;
+using namespace uvio;
 
 auto process_message(websocket::WebsocketFramed &channel) -> Task<> {
     // Ignore errors
