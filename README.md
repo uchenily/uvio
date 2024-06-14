@@ -67,6 +67,32 @@ nc localhost 8000 -v
 
 </details>
 
+<details open><summary>http server</summary>
+
+```cpp
+#include "uvio/net/http.hpp"
+
+using namespace uvio::net::http;
+
+auto main() -> int {
+    HttpServer server{"0.0.0.0", 8000};
+    server.add_route("/", [](const HttpRequest &req, HttpResponse &resp) {
+        resp.body = std::format("{} {}\r\nhello", req.method, req.uri);
+    });
+    server.add_route("/test", [](const HttpRequest &req, HttpResponse &resp) {
+        resp.body = std::format("{} {}\r\ntest route", req.method, req.uri);
+    });
+    server.run();
+}
+```
+
+```bash
+# 客户端
+curl localhost:8000/ -v
+```
+
+</details>
+
 ## 功能
 
 - [x] 异步TCP
