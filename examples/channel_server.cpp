@@ -11,7 +11,7 @@ using namespace uvio::codec;
 
 using namespace example;
 
-auto process(TcpStream &&stream) -> Task<void> {
+auto process(TcpStream &&stream) -> Task<> {
     Channel channel{std::move(stream)};
 
     for (auto i = 0u; i < 64; i++) {
@@ -22,7 +22,7 @@ auto process(TcpStream &&stream) -> Task<void> {
     // co_await channel.Close();
 }
 
-auto server() -> Task<void> {
+auto server() -> Task<> {
     std::string host = "127.0.0.1";
     int         port = 9999;
 

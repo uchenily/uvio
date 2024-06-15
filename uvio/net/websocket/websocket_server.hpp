@@ -45,7 +45,7 @@ public:
     }
 
 private:
-    auto handle_websocket(TcpStream stream) -> Task<void> {
+    auto handle_websocket(TcpStream stream) -> Task<> {
         WebsocketFramed websocket_framed{std::move(stream)};
 
         auto req = co_await websocket_framed.recv_request();

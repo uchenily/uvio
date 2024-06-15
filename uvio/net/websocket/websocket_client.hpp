@@ -37,7 +37,7 @@ public:
     }
 
 private:
-    auto handle_websocket(TcpStream stream) -> Task<void> {
+    auto handle_websocket(TcpStream stream) -> Task<> {
         WebsocketFramed websocket_framed{std::move(stream)};
         websocket_framed.client_side();
 

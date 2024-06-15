@@ -44,7 +44,7 @@ public:
     }
 
     // [[REMEMBER_CO_AWAIT]]
-    // auto Close() -> Task<void> {
+    // auto Close() -> Task<> {
     //     co_await buffered_reader_.inner()
     //         .reunite(buffered_writer_.inner())
     //         .value()

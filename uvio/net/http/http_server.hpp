@@ -37,7 +37,7 @@ public:
     }
 
 private:
-    auto handle_http(TcpStream stream) -> Task<void> {
+    auto handle_http(TcpStream stream) -> Task<> {
         HttpFramed http_framed{std::move(stream)};
 
         auto req = co_await http_framed.read_request();
