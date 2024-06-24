@@ -11,8 +11,8 @@
 namespace uvio::net::http {
 
 class HttpServer {
-    using HandlerFunc
-        = std::function<void(const HttpRequest &req, HttpResponse &resp)>;
+    using HandlerCoro
+        = std::function<Task<>(const HttpRequest &req, HttpResponse &resp)>;
 
 public:
     HttpServer(std::string_view host, int port)
@@ -20,8 +20,8 @@ public:
         , port_{port} {}
 
 public:
-    auto add_route(std::string_view uri, HandlerFunc &&func) {
-        map_handles_[uri] = std::move(func);
+    auto add_route(std::string_view uri, HandlerCoro &&coro) {
+        map_handles_[uri] = std::move(coro);
     }
 
     auto run() {
@@ -52,7 +52,7 @@ private:
         HttpResponse resp;
         if (auto it = map_handles_.find(request.uri);
             it != map_handles_.end()) {
-            it->second(request, resp);
+            co_await it->second(request, resp);
             resp.status_code = 200;
         } else {
             // TODO(x)
@@ -76,7 +76,7 @@ private:
     int         port_;
     TcpStream   stream_{nullptr};
 
-    std::unordered_map<std::string_view, HandlerFunc> map_handles_;
+    std::unordered_map<std::string_view, HandlerCoro> map_handles_;
 };
 
 } // namespace uvio::net::http
