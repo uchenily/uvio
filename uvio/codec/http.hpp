@@ -147,7 +147,9 @@ public:
         -> Task<Result<void>> {
         // 对普通的 HTTP 请求的响应
         if (auto ret = co_await writer.write(
-                std::format("HTTP/1.0 200 OK\r\nContent-Length: {}\r\n\r\n{}",
+                std::format("HTTP/1.0 {} {}\r\nContent-Length: {}\r\n\r\n{}",
+                            resp.status_code,
+                            resp.status_text,
                             resp.body.size(),
                             resp.body));
             !ret) {

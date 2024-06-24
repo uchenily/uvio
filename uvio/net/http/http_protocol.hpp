@@ -14,6 +14,7 @@ struct HttpRequest {
 
 struct HttpResponse {
     int              status_code;
+    std::string      status_text;
     http::HttpHeader headers;
     std::string      body;
 };

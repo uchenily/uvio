@@ -54,10 +54,12 @@ private:
             it != map_handles_.end()) {
             co_await it->second(request, resp);
             resp.status_code = 200;
+            resp.status_text = "OK";
         } else {
             // TODO(x)
             resp.body = "Page not found";
             resp.status_code = 404;
+            resp.status_text = "Not Found";
         }
 
         // HttpResponse resp{
