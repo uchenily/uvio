@@ -48,15 +48,15 @@ private:
         }
 
         auto request = std::move(req.value());
-        LOG_DEBUG("request uri: {} body: {}", request.uri, request.body);
+        LOG_DEBUG("request uri: {}, body: {}", request.uri, request.body);
 
         HttpResponse resp;
-        std::smatch  match;
         for (auto &route : map_handles_) {
             if (std::regex_match(request.uri,
-                                 match,
+                                 request.match_,
                                  std::regex{std::string{route.first}})) {
-                co_await route.second(request, resp);
+                auto handler = route.second;
+                co_await handler(request, resp);
                 resp.status_code = 200;
                 resp.status_text = "OK";
                 LOG_DEBUG("uri `{}` matched pattern `{}`",
@@ -67,7 +67,7 @@ private:
             }
         }
 
-        if (match.empty()) {
+        if (request.match_.empty()) {
             resp.body = "Page not found";
             resp.status_code = 404;
             resp.status_text = "Not Found";
