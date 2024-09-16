@@ -6,6 +6,7 @@
 #include "uvio/net/http/http_protocol.hpp"
 #include "uvio/net/tcp_listener.hpp"
 
+#include <regex>
 #include <unordered_map>
 
 namespace uvio::net::http {
@@ -50,17 +51,39 @@ private:
         LOG_DEBUG("request uri: {} body: {}", request.uri, request.body);
 
         HttpResponse resp;
-        if (auto it = map_handles_.find(request.uri);
-            it != map_handles_.end()) {
-            co_await it->second(request, resp);
-            resp.status_code = 200;
-            resp.status_text = "OK";
-        } else {
-            // TODO(x)
+        std::smatch  match;
+        for (auto &route : map_handles_) {
+            if (std::regex_match(request.uri,
+                                 match,
+                                 std::regex{std::string{route.first}})) {
+                co_await route.second(request, resp);
+                resp.status_code = 200;
+                resp.status_text = "OK";
+                LOG_DEBUG("uri `{}` matched pattern `{}`",
+                          request.uri,
+                          route.first);
+                break;
+            } else {
+            }
+        }
+
+        if (match.empty()) {
             resp.body = "Page not found";
             resp.status_code = 404;
             resp.status_text = "Not Found";
         }
+
+        // if (auto it = map_handles_.find(request.uri);
+        //     it != map_handles_.end()) {
+        //     co_await it->second(request, resp);
+        //     resp.status_code = 200;
+        //     resp.status_text = "OK";
+        // } else {
+        //     // TODO(x)
+        //     resp.body = "Page not found";
+        //     resp.status_code = 404;
+        //     resp.status_text = "Not Found";
+        // }
 
         // HttpResponse resp{
         //     .http_code = 200,
